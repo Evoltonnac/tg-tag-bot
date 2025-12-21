@@ -1,7 +1,20 @@
 import { Bot, webhookCallback, InlineKeyboard } from 'grammy';
 import { kv } from '@vercel/kv';
 import { ChatConfig } from '@/lib/types';
-import { parseTagBlock } from '@/lib/tag-utils';
+import { parseTagBlockSmart } from '@/lib/messages';
+import {
+  MSG_WELCOME,
+  MSG_CONFIG_PROMPT,
+  msgConfigEntry,
+  MSG_TAG_PREPARING,
+  MSG_TAG_READY,
+  MSG_FORWARD_DETECTED,
+  MSG_ERR_NOT_ADMIN,
+  MSG_ERR_VERIFY_FAILED,
+  MSG_ERR_MESSAGE_NOT_FOUND,
+  MSG_ERR_INVALID_PARAM,
+  MSG_ERR_WRONG_CHAT,
+} from '@/lib/messages';
 
 export const runtime = 'edge';
 
@@ -35,37 +48,37 @@ bot.on('channel_post:text', async (ctx, next) => {
   const deepLinkPayload = `config_${ctx.chat.id}`;
   const deepLinkUrl = `https://t.me/${botUsername}?start=${deepLinkPayload}`;
   
-  const keyboard = new InlineKeyboard().url('🛠️ 去私聊配置 / Configure', deepLinkUrl);
+  const keyboard = new InlineKeyboard().url('⚙️ CONFIGURE', deepLinkUrl);
   
-  await ctx.reply('请点击下方按钮前往私聊进行配置：', { reply_markup: keyboard });
+  await ctx.reply(MSG_CONFIG_PROMPT, { reply_markup: keyboard, parse_mode: 'HTML' });
 });
 
 // Config command in groups (not channels)
 bot.command('config', async (ctx) => {
   if (ctx.chat.type === 'private') {
-    return ctx.reply('请在您想要配置的频道或群组中使用此命令。');
+    return ctx.reply(MSG_ERR_WRONG_CHAT, { parse_mode: 'HTML' });
   }
 
   // Check admin for groups
   const author = await ctx.getAuthor();
   if (author.status !== 'administrator' && author.status !== 'creator') {
-    return ctx.reply('只有管理员可以配置。');
+    return ctx.reply(MSG_ERR_NOT_ADMIN, { parse_mode: 'HTML' });
   }
 
   const botUsername = ctx.me.username;
   const deepLinkPayload = `config_${ctx.chat.id}`;
   const deepLinkUrl = `https://t.me/${botUsername}?start=${deepLinkPayload}`;
   
-  const keyboard = new InlineKeyboard().url('🛠️ 去私聊配置 / Configure', deepLinkUrl);
+  const keyboard = new InlineKeyboard().url('⚙️ CONFIGURE', deepLinkUrl);
   
-  await ctx.reply('请点击下方按钮前往私聊进行配置：', { reply_markup: keyboard });
+  await ctx.reply(MSG_CONFIG_PROMPT, { reply_markup: keyboard, parse_mode: 'HTML' });
 });
 
 // 2. Start Command (Deep Linking)
 bot.command('start', async (ctx) => {
   const payload = ctx.match;
   if (!payload) {
-    return ctx.reply('欢迎使用 Tag Bot！\n\n1. 将我加入频道并设为管理员\n2. 在频道中发送 /config 初始化配置\n3. 转发消息给我或直接在频道发布即可开始打标');
+    return ctx.reply(MSG_WELCOME, { parse_mode: 'HTML' });
   }
 
   // Handle Config Deep Link: config_-100123456
@@ -76,16 +89,16 @@ bot.command('start', async (ctx) => {
     try {
       const member = await ctx.api.getChatMember(channelId, ctx.from!.id);
       if (member.status !== 'administrator' && member.status !== 'creator') {
-        return ctx.reply('您不是该频道的管理员，无法配置。');
+        return ctx.reply(MSG_ERR_NOT_ADMIN, { parse_mode: 'HTML' });
       }
 
       const appUrl = getWebAppUrl('config-form', { chat_id: channelId });
-      const keyboard = new InlineKeyboard().webApp('🛠️ 打开配置页面 / Open Config', appUrl);
+      const keyboard = new InlineKeyboard().webApp('⚙️ OPEN CONFIG', appUrl);
       
-      return ctx.reply(`正在配置频道 (ID: ${channelId})，请点击下方按钮：`, { reply_markup: keyboard });
+      return ctx.reply(msgConfigEntry(channelId), { reply_markup: keyboard, parse_mode: 'HTML' });
     } catch (e) {
       console.error('Check admin error:', e);
-      return ctx.reply('无法验证您的管理员身份。请确保 Bot 在该频道中也是管理员。');
+      return ctx.reply(MSG_ERR_VERIFY_FAILED, { parse_mode: 'HTML' });
     }
   }
 
@@ -99,7 +112,7 @@ bot.command('start', async (ctx) => {
       // copyMessage sends a clean copy without reply_markup
       const copyMsg = await ctx.api.copyMessage(ctx.chat.id, channelId, parseInt(messageId));
       
-      const replyMsg = await ctx.reply('正在准备打标...');
+      const replyMsg = await ctx.reply(MSG_TAG_PREPARING, { parse_mode: 'HTML' });
 
       const appUrlParams: Record<string, string | number> = { 
         chat_id: channelId, 
@@ -120,17 +133,17 @@ bot.command('start', async (ctx) => {
       }
 
       const appUrl = getWebAppUrl('tag-form', appUrlParams);
-      const keyboard = new InlineKeyboard().webApp('🏷️ 开始打标 / Start Tagging', appUrl);
+      const keyboard = new InlineKeyboard().webApp('🏷️ START TAGGING', appUrl);
       
-      await ctx.api.editMessageText(ctx.chat.id, replyMsg.message_id, '请点击下方按钮对该消息进行打标：', { reply_markup: keyboard });
+      await ctx.api.editMessageText(ctx.chat.id, replyMsg.message_id, MSG_TAG_READY, { reply_markup: keyboard, parse_mode: 'HTML' });
     } catch (error) {
       console.error('Deep link handling error:', error);
-      await ctx.reply('无法获取原消息。可能是消息已被删除，或者 Bot 不是该频道的管理员。');
+      await ctx.reply(MSG_ERR_MESSAGE_NOT_FOUND, { parse_mode: 'HTML' });
     }
     return;
   }
 
-  await ctx.reply('无效的参数。');
+  await ctx.reply(MSG_ERR_INVALID_PARAM, { parse_mode: 'HTML' });
 });
 
 // 3. Handle Forwarded Messages (User forwards channel post to Bot)
@@ -149,11 +162,11 @@ bot.on('message', async (ctx) => {
         if (config) {
             // 获取转发消息的内容并解析标签
             const caption = ctx.msg.caption || ctx.msg.text || '';
-            const parsedTags = parseTagBlock(caption, config.fields);
+            const parsedTags = parseTagBlockSmart(caption, config.fields);
 
             // Trigger tagging flow
             // First reply to get the bot message ID (context for deletion later)
-            const replyMsg = await ctx.reply('检测到来自已配置频道的消息。正在准备...');
+            const replyMsg = await ctx.reply(MSG_TAG_PREPARING, { parse_mode: 'HTML' });
             
             const appUrlParams: Record<string, string | number> = { 
               chat_id: channelId, 
@@ -169,10 +182,10 @@ bot.on('message', async (ctx) => {
             }
 
             const appUrl = getWebAppUrl('tag-form', appUrlParams);
-            const keyboard = new InlineKeyboard().webApp('🏷️ 开始打标 / Start Tagging', appUrl);
+            const keyboard = new InlineKeyboard().webApp('🏷️ START TAGGING', appUrl);
             
             // Edit the message to add the button
-            return ctx.api.editMessageText(ctx.chat.id, replyMsg.message_id, '检测到来自已配置频道的消息。点击下方按钮开始打标：', { reply_markup: keyboard });
+            return ctx.api.editMessageText(ctx.chat.id, replyMsg.message_id, MSG_FORWARD_DETECTED, { reply_markup: keyboard, parse_mode: 'HTML' });
         }
     }
 });
@@ -190,7 +203,7 @@ bot.on(['channel_post:photo', 'channel_post:video', 'channel_post:document', 'ch
   const deepLinkPayload = `tag_${chat.id}_${messageId}`;
   const deepLinkUrl = `https://t.me/${botUsername}?start=${deepLinkPayload}`;
 
-  const keyboard = new InlineKeyboard().url('✍️ 去私聊打标 / Edit Tags', deepLinkUrl);
+  const keyboard = new InlineKeyboard().url('🏷️ EDIT TAGS', deepLinkUrl);
   
   try {
     await ctx.api.editMessageReplyMarkup(chat.id, messageId, {

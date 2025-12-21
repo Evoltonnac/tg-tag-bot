@@ -2,7 +2,7 @@ import { Bot } from 'grammy';
 import { kv } from '@vercel/kv';
 import { NextRequest, NextResponse } from 'next/server';
 import { ChatConfig } from '@/lib/types';
-import { generateTagBlock, removeTagBlock } from '@/lib/tag-utils';
+import { generateNeoBrutalTagBlock, removeTagBlockSmart, msgTagSuccess } from '@/lib/messages';
 
 export const runtime = 'edge';
 
@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 3. Clean and Rebuild
-    const cleanCaption = removeTagBlock(currentCaption);
+    const cleanCaption = removeTagBlockSmart(currentCaption);
     
     // Update Dynamic Options
     let configUpdated = false;
@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
     if (configUpdated) await kv.set(`config:${chatId}`, config);
 
     // Generate Block
-    const tagBlock = generateTagBlock(tags, config.fields);
+    const tagBlock = generateNeoBrutalTagBlock(tags, config.fields);
     const newCaption = `${cleanCaption}${tagBlock}`;
 
     // 4. Update Telegram Message
@@ -158,13 +158,12 @@ export async function POST(req: NextRequest) {
             }
 
             // Summary Text
-            // Use cleanCaption (first 50 chars) or just "Message"
-            const summaryText = cleanCaption ? (cleanCaption.length > 50 ? cleanCaption.substring(0, 50) + '...' : cleanCaption) : 'Message';
-            const notification = `✅ <b>打标成功 / Tagged!</b>\n\n📄 ${summaryText}`;
+            const summaryText = cleanCaption || '';
+            const notification = msgTagSuccess(summaryText);
             
             const summaryKeyboard = {
                 inline_keyboard: [[
-                    { text: '🔗 查看源消息 / View Source', url: sourceLink }
+                    { text: '🔗 VIEW', url: sourceLink }
                 ]]
             };
 

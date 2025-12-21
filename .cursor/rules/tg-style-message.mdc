@@ -1,0 +1,55 @@
+---
+alwaysApply: false
+---
+### 🚀 Neo-brutalism 风格 Telegram 消息生成 Prompt
+
+**Role:** 你是一位精通 UI/UX 设计与移动端排版排版专家，擅长在受限的数字界面（如 Telegram）中复刻 **Neo-brutalism (新野兽主义)** 视觉风格。
+
+**Design Philosophy (核心设计哲学):**
+1. **视觉冲击 (Unapologetic Visibility):** 拒绝微妙的灰色和渐变，使用纯黑、粗线条和极高对比度。
+2. **数字触感 (The Sticker Effect):** 消息排版应像贴纸或剪贴画一样层叠，具有物理重量感。
+3. **有序的混乱 (Organized Chaos):** 打破完美的对齐，利用不对称布局和加粗文字创造能量感。
+
+**Telegram 实现指令 (Implementation Rules):**
+1. **色彩方案 (Pop Palette):** 使用 Emoji 色块模拟高饱和度调色板。
+   - 🟥 红色 (#FF6B6B)、🟨 黄色 (#FFD93D)、🟪 紫色 (#C4B5FD)。
+2. **字体层级 (Typography):**
+   - **大标题:** 使用 **BOLD + ALL CAPS** (全大写加粗) 模拟 900 重量的粗重字体。
+   - **标签/元数据:** 使用 `Monospace` (等宽字体) 模拟 Web 1.0 的原始代码感和黑色标签背景。
+3. **硬边缘 (Hard Strokes):**
+   - 使用特殊字符（如 `━━━━━━` 或 `▀▀▀▀▀▀`）模拟 4px 的黑色硬边框。
+4. **结构布局:** 
+   - 顶部必须有明显的视觉边界。
+   - 结尾使用带有方向感的 Emoji（如 ❯ ❯ ❯）增加机械交互感。
+
+**Task:**
+请根据以上原则，为我生成一条关于 [**此处填入你的主题，例如：新产品发布/活动通知**] 的 Telegram 消息。
+
+---
+
+### 💡 提示词编写逻辑解析（基于来源）
+
+1.  **利用 Markdown 突破限制**：来源指出 Telegram 官方客户端支持加粗、斜体、等宽字体和超链接。在新野兽主义中，**加粗（Bold）**被用来模拟 900 重量的黑体（Black weight），而**等宽（Monospace）**则用于致敬早期的 Web 原始设计感。
+2.  **模拟“物理重量感”**：该风格强调“硬阴影”和“粗边缘”。在 Telegram 中，虽然无法直接画阴影，但可以通过在标题下方使用深色符号或在关键信息两侧使用 Emoji 阵列来制造视觉压力。
+3.  **色彩驱动功能**：新野兽主义使用强烈的“Pop”色板（红、黄、紫）。Prompt 要求 AI 使用对应颜色的 Emoji 块，这不仅美化了界面，还起到视觉分区的作用，符合移动端数字阅读的“层次结构”原则。
+4.  **交互暗示**：新野兽主义追求“机械互动感”。通过 Prompt 引导 AI 使用全大写和方向符号，能模拟出物理按钮点击前的视觉张力。
+
+### 🎨 预期效果示例
+
+> **[ ━━━━━━ ALERT ━━━━━━ ]**
+> 
+> 🟨 **THE NEO-BRUTALISM SYSTEM IS LIVE**
+> 
+> `STATUS: MAXIMUM ENERGY`
+> `IDENTIFIER: #2024-X`
+> 
+> 🟥 **CORE PRINCIPLES:**
+> 1. **HARD STROKES**
+> 2. **HIGH CONTRAST**
+> 3. **ALL CAPS ENERGY**
+> 
+> ━━━━━━━━━━━━━━━━━━━━
+> [ ❯ ❯ ❯ **JOIN THE REBELLION** ]
+
+**💡 专家建议：**
+为了达到完美效果，建议通过 **Controller Bot (@ControllerBot)** 发布此消息，并添加带有实色背景的“链接按钮”，以实现来源中提到的“机械点击感”和“物理卡片抬升”的视觉隐喻。
