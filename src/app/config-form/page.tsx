@@ -39,11 +39,11 @@ function TypeButton({
     <button
       onClick={onClick}
       className={`
-        px-4 py-3 border-4 border-black font-bold text-sm uppercase
+        px-4 py-3 border-4 border-neo-border font-bold text-sm uppercase text-neo-fg
         transition-all duration-100
         ${selected 
-          ? 'bg-[#FF6B6B] shadow-[4px_4px_0px_0px_#000] -translate-y-0.5' 
-          : 'bg-white shadow-[2px_2px_0px_0px_#000] hover:bg-[#FFD93D]'
+          ? 'bg-neo-accent shadow-[4px_4px_0px_0px_var(--color-neo-shadow)] -translate-y-0.5' 
+          : 'bg-neo-bg-alt shadow-[2px_2px_0px_0px_var(--color-neo-shadow)] hover:bg-neo-secondary'
         }
         active:translate-x-[2px] active:translate-y-[2px] active:shadow-none
       `}
@@ -62,11 +62,11 @@ function OptionTag({
   onRemove: () => void;
 }) {
   return (
-    <div className="inline-flex items-center gap-2 px-3 py-2 border-4 border-black bg-[#C4B5FD] font-bold text-sm shadow-[2px_2px_0px_0px_#000]">
+    <div className="inline-flex items-center gap-2 px-3 py-2 border-4 border-neo-border bg-neo-muted font-bold text-sm shadow-[2px_2px_0px_0px_var(--color-neo-shadow)] text-neo-fg">
       {label}
       <button 
         onClick={onRemove}
-        className="w-5 h-5 flex items-center justify-center bg-black text-white font-black text-xs hover:bg-[#FF6B6B] transition-colors"
+        className="w-5 h-5 flex items-center justify-center bg-neo-fg text-neo-bg font-black text-xs hover:bg-neo-accent transition-colors"
       >
         ×
       </button>
@@ -108,16 +108,16 @@ function AddOptionInput({
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="输入新选项..."
-        className="flex-1 px-3 py-2 border-4 border-black font-bold text-sm bg-white
-          placeholder:text-black/60
-          focus:bg-[#FFD93D] focus:shadow-[4px_4px_0px_0px_#000] focus:outline-none"
+        className="flex-1 px-3 py-2 border-4 border-neo-border font-bold text-sm bg-neo-bg-alt text-neo-fg
+          placeholder:text-neo-fg-muted
+          focus:bg-neo-secondary focus:shadow-[4px_4px_0px_0px_var(--color-neo-shadow)] focus:outline-none"
       />
       <button
         onClick={handleAdd}
         disabled={!value.trim()}
-        className="px-4 py-2 border-4 border-black font-black text-sm uppercase
-          bg-[#FFD93D] shadow-[2px_2px_0px_0px_#000]
-          hover:bg-[#FF6B6B] transition-all duration-100
+        className="px-4 py-2 border-4 border-neo-border font-black text-sm uppercase text-neo-fg
+          bg-neo-secondary shadow-[2px_2px_0px_0px_var(--color-neo-shadow)]
+          hover:bg-neo-accent transition-all duration-100
           active:translate-x-px active:translate-y-px active:shadow-none
           disabled:opacity-50 disabled:cursor-not-allowed"
       >
@@ -155,26 +155,26 @@ function FieldCard({
   };
 
   return (
-    <div className="bg-white border-4 border-black shadow-[6px_6px_0px_0px_#000]">
+    <div className="bg-neo-bg-alt border-4 border-neo-border shadow-[6px_6px_0px_0px_var(--color-neo-shadow)]">
       {/* 卡片头部 - 可点击展开/收起 */}
       <div 
         onClick={onToggle}
-        className="flex items-center justify-between p-4 bg-[#FFD93D] border-b-4 border-black cursor-pointer hover:bg-[#FFE566] transition-colors"
+        className="flex items-center justify-between p-4 bg-neo-secondary border-b-4 border-neo-border cursor-pointer hover:bg-neo-secondary-hover transition-colors"
       >
         <div className="flex items-center gap-3">
-          <span className="w-8 h-8 flex items-center justify-center border-4 border-black bg-white font-black text-base">
+          <span className="w-8 h-8 flex items-center justify-center border-4 border-neo-border bg-neo-bg-alt font-black text-base text-neo-fg">
             {index + 1}
           </span>
           <div>
-            <h3 className="font-black text-lg uppercase tracking-tight">{field.label || 'New Field'}</h3>
-            <span className="text-xs font-bold text-black/80 uppercase">
+            <h3 className="font-black text-lg uppercase tracking-tight text-neo-fg">{field.label || 'New Field'}</h3>
+            <span className="text-xs font-bold text-neo-fg-muted uppercase">
               {field.type === 'text' ? '文本' : field.type === 'select' ? '单选' : '多选'}
               {field.required && ' • 必填'}
             </span>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <span className="font-black text-xl">{isExpanded ? '−' : '+'}</span>
+          <span className="font-black text-xl text-neo-fg">{isExpanded ? '−' : '+'}</span>
         </div>
       </div>
 
@@ -184,34 +184,34 @@ function FieldCard({
           {/* 基本信息 */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wide text-black/80 mb-1">
+              <label className="block text-xs font-bold uppercase tracking-wide text-neo-fg-muted mb-1">
                 显示名称
               </label>
               <input
                 type="text"
                 value={field.label}
                 onChange={(e) => onUpdate({ label: e.target.value })}
-                className="w-full px-3 py-2 border-4 border-black font-bold text-base bg-white
-                  focus:bg-[#FFD93D] focus:shadow-[4px_4px_0px_0px_#000] focus:outline-none"
+                className="w-full px-3 py-2 border-4 border-neo-border font-bold text-base bg-neo-bg-alt text-neo-fg
+                  focus:bg-neo-secondary focus:shadow-[4px_4px_0px_0px_var(--color-neo-shadow)] focus:outline-none"
               />
             </div>
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wide text-black/80 mb-1">
+              <label className="block text-xs font-bold uppercase tracking-wide text-neo-fg-muted mb-1">
                 字段键名
               </label>
               <input
                 type="text"
                 value={field.key}
                 onChange={(e) => onUpdate({ key: e.target.value })}
-                className="w-full px-3 py-2 border-4 border-black font-bold text-base bg-white
-                  focus:bg-[#FFD93D] focus:shadow-[4px_4px_0px_0px_#000] focus:outline-none"
+                className="w-full px-3 py-2 border-4 border-neo-border font-bold text-base bg-neo-bg-alt text-neo-fg
+                  focus:bg-neo-secondary focus:shadow-[4px_4px_0px_0px_var(--color-neo-shadow)] focus:outline-none"
               />
             </div>
           </div>
 
           {/* 类型选择 */}
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wide text-black/80 mb-2">
+            <label className="block text-xs font-bold uppercase tracking-wide text-neo-fg-muted mb-2">
               字段类型
             </label>
             <div className="flex flex-wrap gap-2">
@@ -238,17 +238,17 @@ function FieldCard({
             <button
               onClick={() => onUpdate({ required: !field.required })}
               className={`
-                flex items-center gap-3 px-4 py-3 border-4 border-black font-bold text-sm uppercase
+                flex items-center gap-3 px-4 py-3 border-4 border-neo-border font-bold text-sm uppercase text-neo-fg
                 transition-all duration-100
                 ${field.required 
-                  ? 'bg-[#FF6B6B] shadow-[4px_4px_0px_0px_#000]' 
-                  : 'bg-white shadow-[2px_2px_0px_0px_#000] hover:bg-[#C4B5FD]'
+                  ? 'bg-neo-accent shadow-[4px_4px_0px_0px_var(--color-neo-shadow)]' 
+                  : 'bg-neo-bg-alt shadow-[2px_2px_0px_0px_var(--color-neo-shadow)] hover:bg-neo-muted'
                 }
                 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none
               `}
             >
-              <span className={`w-5 h-5 border-4 border-black flex items-center justify-center ${field.required ? 'bg-white' : 'bg-white'}`}>
-                {field.required && <span className="font-black text-sm">✓</span>}
+              <span className="w-5 h-5 border-4 border-neo-border flex items-center justify-center bg-neo-bg-alt">
+                {field.required && <span className="font-black text-sm text-neo-fg">✓</span>}
               </span>
               必填字段
             </button>
@@ -256,8 +256,8 @@ function FieldCard({
 
           {/* 选项管理 - 仅 select 和 multi_select */}
           {(field.type === 'select' || field.type === 'multi_select') && (
-            <div className="pt-4 border-t-4 border-black/20">
-              <label className="block text-xs font-bold uppercase tracking-wide text-black/80 mb-2">
+            <div className="pt-4 border-t-4 border-neo-border/20">
+              <label className="block text-xs font-bold uppercase tracking-wide text-neo-fg-muted mb-2">
                 可选项
               </label>
               
@@ -271,7 +271,7 @@ function FieldCard({
                   />
                 ))}
                 {(!field.options || field.options.length === 0) && (
-                  <span className="text-sm text-black/60 font-bold">暂无选项</span>
+                  <span className="text-sm text-neo-fg-muted font-bold">暂无选项</span>
                 )}
               </div>
 
@@ -283,17 +283,17 @@ function FieldCard({
                 <button
                   onClick={() => onUpdate({ allow_new: !field.allow_new })}
                   className={`
-                    flex items-center gap-3 px-4 py-2 border-4 border-black font-bold text-xs uppercase
+                    flex items-center gap-3 px-4 py-2 border-4 border-neo-border font-bold text-xs uppercase text-neo-fg
                     transition-all duration-100
                     ${field.allow_new 
-                      ? 'bg-[#C4B5FD] shadow-[3px_3px_0px_0px_#000]' 
-                      : 'bg-white shadow-[2px_2px_0px_0px_#000] hover:bg-[#FFD93D]'
+                      ? 'bg-neo-muted shadow-[3px_3px_0px_0px_var(--color-neo-shadow)]' 
+                      : 'bg-neo-bg-alt shadow-[2px_2px_0px_0px_var(--color-neo-shadow)] hover:bg-neo-secondary'
                     }
                     active:translate-x-px active:translate-y-px active:shadow-none
                   `}
                 >
-                  <span className={`w-4 h-4 border-3 border-black flex items-center justify-center bg-white`}>
-                    {field.allow_new && <span className="font-black text-xs">✓</span>}
+                  <span className="w-4 h-4 border-3 border-neo-border flex items-center justify-center bg-neo-bg-alt">
+                    {field.allow_new && <span className="font-black text-xs text-neo-fg">✓</span>}
                   </span>
                   允许用户创建新选项
                 </button>
@@ -302,12 +302,12 @@ function FieldCard({
           )}
 
           {/* 删除按钮 */}
-          <div className="pt-4 border-t-4 border-black/20">
+          <div className="pt-4 border-t-4 border-neo-border/20">
             <button
               onClick={onRemove}
-              className="px-4 py-2 border-4 border-black bg-white font-bold text-sm uppercase text-[#FF6B6B]
-                shadow-[2px_2px_0px_0px_#000]
-                hover:bg-[#FF6B6B] hover:text-black transition-all duration-100
+              className="px-4 py-2 border-4 border-neo-border bg-neo-bg-alt font-bold text-sm uppercase text-neo-accent
+                shadow-[2px_2px_0px_0px_var(--color-neo-shadow)]
+                hover:bg-neo-accent hover:text-neo-fg transition-all duration-100
                 active:translate-x-px active:translate-y-px active:shadow-none"
             >
               🗑 删除此字段
@@ -411,8 +411,8 @@ function ConfigEditor() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#FFFDF5]">
-        <div className="px-8 py-4 border-4 border-black bg-[#FFD93D] shadow-[8px_8px_0px_0px_#000] font-black text-xl uppercase animate-pulse">
+      <div className="flex items-center justify-center min-h-screen bg-neo-bg">
+        <div className="px-8 py-4 border-4 border-neo-border bg-neo-secondary shadow-[8px_8px_0px_0px_var(--color-neo-shadow)] font-black text-xl uppercase animate-pulse text-neo-fg">
           Loading...
         </div>
       </div>
@@ -421,8 +421,8 @@ function ConfigEditor() {
 
   if (saveSuccess) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#FFFDF5]">
-        <div className="px-8 py-4 border-4 border-black bg-[#4ADE80] shadow-[8px_8px_0px_0px_#000] font-black text-2xl uppercase">
+      <div className="flex items-center justify-center min-h-screen bg-neo-bg">
+        <div className="px-8 py-4 border-4 border-neo-border bg-neo-success shadow-[8px_8px_0px_0px_var(--color-neo-shadow)] font-black text-2xl uppercase text-neo-fg">
           ✓ 已保存！
         </div>
       </div>
@@ -430,19 +430,13 @@ function ConfigEditor() {
   }
 
   return (
-    <div 
-      className="min-h-screen bg-[#FFFDF5] p-4 pb-28"
-      style={{
-        backgroundImage: 'radial-gradient(#000 1px, transparent 1px)',
-        backgroundSize: '20px 20px'
-      }}
-    >
+    <div className="min-h-screen bg-neo-bg p-4 pb-28 neo-halftone-sm">
       {/* 标题 */}
       <div className="mb-6">
-        <h1 className="inline-block px-4 py-2 border-4 border-black bg-black text-white font-black text-xl uppercase tracking-tight shadow-[4px_4px_0px_0px_#FF6B6B] rotate-1">
+        <h1 className="inline-block px-4 py-2 border-4 border-neo-border bg-neo-fg text-neo-bg font-black text-xl uppercase tracking-tight shadow-[4px_4px_0px_0px_var(--color-neo-accent)] rotate-1">
           配置管理
         </h1>
-        <p className="mt-3 font-bold text-sm text-black/80">
+        <p className="mt-3 font-bold text-sm text-neo-fg-muted">
           设置标签表单的字段和选项
         </p>
       </div>
@@ -464,8 +458,8 @@ function ConfigEditor() {
         {/* 添加字段按钮 */}
         <button 
           onClick={addField}
-          className="w-full py-4 border-4 border-dashed border-black bg-white font-black text-base uppercase
-            hover:bg-[#C4B5FD] hover:border-solid transition-all duration-100
+          className="w-full py-4 border-4 border-dashed border-neo-border bg-neo-bg-alt font-black text-base uppercase text-neo-fg
+            hover:bg-neo-muted hover:border-solid transition-all duration-100
             active:translate-y-[2px]"
         >
           + 添加新字段
@@ -473,14 +467,14 @@ function ConfigEditor() {
       </div>
 
       {/* 底部保存按钮 */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-[#FFFDF5] border-t-4 border-black">
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-neo-bg border-t-4 border-neo-border">
         <div className="max-w-md mx-auto">
           <button
             onClick={handleSave}
             disabled={saving}
-            className="w-full py-4 border-4 border-black bg-[#FF6B6B] font-black text-lg uppercase
-              shadow-[6px_6px_0px_0px_#000]
-              hover:bg-[#FF8080] transition-all duration-100
+            className="w-full py-4 border-4 border-neo-border bg-neo-accent font-black text-lg uppercase text-neo-fg
+              shadow-[6px_6px_0px_0px_var(--color-neo-shadow)]
+              hover:bg-neo-accent-hover transition-all duration-100
               active:translate-x-[3px] active:translate-y-[3px] active:shadow-none
               disabled:opacity-50"
           >
@@ -495,8 +489,8 @@ function ConfigEditor() {
 export default function Page() {
   return (
     <Suspense fallback={
-      <div className="flex items-center justify-center min-h-screen bg-[#FFFDF5]">
-        <div className="px-8 py-4 border-4 border-black bg-[#FFD93D] shadow-[8px_8px_0px_0px_#000] font-black text-xl uppercase">
+      <div className="flex items-center justify-center min-h-screen bg-neo-bg">
+        <div className="px-8 py-4 border-4 border-neo-border bg-neo-secondary shadow-[8px_8px_0px_0px_var(--color-neo-shadow)] font-black text-xl uppercase text-neo-fg">
           Loading...
         </div>
       </div>

@@ -50,13 +50,13 @@ function StepIndicator({
             key={field.key}
             onClick={() => onStepClick(index)}
             className={`
-              shrink-0 px-4 py-2 border-4 border-black font-bold text-sm uppercase tracking-wide
+              shrink-0 px-4 py-2 border-4 border-neo-border font-bold text-sm uppercase tracking-wide text-neo-fg
               transition-all duration-100
               ${isActive 
-                ? 'bg-[#FF6B6B] text-black shadow-[4px_4px_0px_0px_#000]' 
+                ? 'bg-neo-accent shadow-[4px_4px_0px_0px_var(--color-neo-shadow)]' 
                 : hasValue 
-                  ? 'bg-[#FFD93D] text-black shadow-[2px_2px_0px_0px_#000]' 
-                  : 'bg-white text-black shadow-[2px_2px_0px_0px_#000]'
+                  ? 'bg-neo-secondary shadow-[2px_2px_0px_0px_var(--color-neo-shadow)]' 
+                  : 'bg-neo-bg-alt shadow-[2px_2px_0px_0px_var(--color-neo-shadow)]'
               }
               active:translate-x-[2px] active:translate-y-[2px] active:shadow-none
             `}
@@ -87,11 +87,11 @@ function OptionTag({
     <button
       onClick={onClick}
       className={`
-        relative px-4 py-3 border-4 border-black font-bold text-base
+        relative px-4 py-3 border-4 border-neo-border font-bold text-base text-neo-fg
         transition-all duration-100
         ${selected 
-          ? 'bg-[#FF6B6B] text-black shadow-[4px_4px_0px_0px_#000] -translate-y-1' 
-          : 'bg-white text-black shadow-[2px_2px_0px_0px_#000] hover:bg-[#FFD93D]'
+          ? 'bg-neo-accent shadow-[4px_4px_0px_0px_var(--color-neo-shadow)] -translate-y-1' 
+          : 'bg-neo-bg-alt shadow-[2px_2px_0px_0px_var(--color-neo-shadow)] hover:bg-neo-secondary'
         }
         active:translate-x-[2px] active:translate-y-[2px] active:shadow-none
       `}
@@ -100,7 +100,7 @@ function OptionTag({
       {isCustom && onRemove && (
         <span 
           onClick={(e) => { e.stopPropagation(); onRemove(); }}
-          className="absolute -top-2 -right-2 w-6 h-6 bg-black text-white flex items-center justify-center text-xs font-black border-2 border-black"
+          className="absolute -top-2 -right-2 w-6 h-6 bg-neo-fg text-neo-bg flex items-center justify-center text-xs font-black border-2 border-neo-border"
         >
           ×
         </span>
@@ -142,16 +142,16 @@ function AddNewTagInput({
         onChange={(e) => setInputValue(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="输入新标签..."
-        className="flex-1 px-4 py-3 border-4 border-black font-bold text-base bg-white
-          placeholder:text-black/60
-          focus:bg-[#FFD93D] focus:shadow-[4px_4px_0px_0px_#000] focus:outline-none"
+        className="flex-1 px-4 py-3 border-4 border-neo-border font-bold text-base bg-neo-bg-alt text-neo-fg
+          placeholder:text-neo-fg-muted
+          focus:bg-neo-secondary focus:shadow-[4px_4px_0px_0px_var(--color-neo-shadow)] focus:outline-none"
       />
       <button
         onClick={handleAdd}
         disabled={!inputValue.trim()}
-        className="px-6 py-3 border-4 border-black font-black text-base uppercase
-          bg-[#C4B5FD] shadow-[4px_4px_0px_0px_#000]
-          hover:bg-[#FFD93D] transition-all duration-100
+        className="px-6 py-3 border-4 border-neo-border font-black text-base uppercase text-neo-fg
+          bg-neo-muted shadow-[4px_4px_0px_0px_var(--color-neo-shadow)]
+          hover:bg-neo-secondary transition-all duration-100
           active:translate-x-[2px] active:translate-y-[2px] active:shadow-none
           disabled:opacity-50 disabled:cursor-not-allowed"
       >
@@ -188,9 +188,9 @@ function FieldEditor({
           value={value as string || ''}
           onChange={(e) => onChange(e.target.value)}
           placeholder={`输入 ${field.label}...`}
-          className="w-full px-4 py-4 border-4 border-black font-bold text-lg bg-white
-            placeholder:text-black/60
-            focus:bg-[#FFD93D] focus:shadow-[4px_4px_0px_0px_#000] focus:outline-none"
+          className="w-full px-4 py-4 border-4 border-neo-border font-bold text-lg bg-neo-bg-alt text-neo-fg
+            placeholder:text-neo-fg-muted
+            focus:bg-neo-secondary focus:shadow-[4px_4px_0px_0px_var(--color-neo-shadow)] focus:outline-none"
         />
       </div>
     );
@@ -252,8 +252,8 @@ function FieldEditor({
           ))}
         </div>
         {selectedValues.length > 0 && (
-          <div className="pt-2 border-t-4 border-black/20">
-            <span className="font-bold text-sm text-black/80 uppercase tracking-wide">
+          <div className="pt-2 border-t-4 border-neo-border/20">
+            <span className="font-bold text-sm text-neo-fg-muted uppercase tracking-wide">
               已选: {selectedValues.join(', ')}
             </span>
           </div>
@@ -437,8 +437,8 @@ function FormContent() {
 
   if (status === 'loading') {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#FFFDF5]">
-        <div className="px-8 py-4 border-4 border-black bg-[#FFD93D] shadow-[8px_8px_0px_0px_#000] font-black text-xl uppercase animate-pulse">
+      <div className="flex items-center justify-center min-h-screen bg-neo-bg">
+        <div className="px-8 py-4 border-4 border-neo-border bg-neo-secondary shadow-[8px_8px_0px_0px_var(--color-neo-shadow)] font-black text-xl uppercase animate-pulse text-neo-fg">
           Loading...
         </div>
       </div>
@@ -447,8 +447,8 @@ function FormContent() {
 
   if (status === 'error') {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#FFFDF5]">
-        <div className="px-8 py-4 border-4 border-black bg-[#FF6B6B] shadow-[8px_8px_0px_0px_#000] font-black text-xl">
+      <div className="flex items-center justify-center min-h-screen bg-neo-bg">
+        <div className="px-8 py-4 border-4 border-neo-border bg-neo-accent shadow-[8px_8px_0px_0px_var(--color-neo-shadow)] font-black text-xl text-neo-fg">
           {statusMsg}
         </div>
       </div>
@@ -457,8 +457,8 @@ function FormContent() {
 
   if (status === 'success') {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#FFFDF5]">
-        <div className="px-8 py-4 border-4 border-black bg-[#4ADE80] shadow-[8px_8px_0px_0px_#000] font-black text-2xl uppercase">
+      <div className="flex items-center justify-center min-h-screen bg-neo-bg">
+        <div className="px-8 py-4 border-4 border-neo-border bg-neo-success shadow-[8px_8px_0px_0px_var(--color-neo-shadow)] font-black text-2xl uppercase text-neo-fg">
           ✓ 成功！
         </div>
       </div>
@@ -472,15 +472,11 @@ function FormContent() {
   return (
     <div 
       ref={containerRef}
-      className="min-h-screen bg-[#FFFDF5] p-4 pb-32 overflow-y-auto"
-      style={{
-        backgroundImage: 'radial-gradient(#000 1px, transparent 1px)',
-        backgroundSize: '20px 20px'
-      }}
+      className="min-h-screen bg-neo-bg p-4 pb-32 overflow-y-auto neo-halftone-sm"
     >
       {/* 标题 */}
       <div className="mb-6">
-        <h1 className="inline-block px-4 py-2 border-4 border-black bg-black text-white font-black text-xl uppercase tracking-tight shadow-[4px_4px_0px_0px_#FF6B6B] -rotate-1">
+        <h1 className="inline-block px-4 py-2 border-4 border-neo-border bg-neo-fg text-neo-bg font-black text-xl uppercase tracking-tight shadow-[4px_4px_0px_0px_var(--color-neo-accent)] -rotate-1">
           标签管理
         </h1>
       </div>
@@ -497,19 +493,19 @@ function FormContent() {
 
       {/* 当前字段编辑器 */}
       {currentField && (
-        <div className="bg-white border-4 border-black shadow-[8px_8px_0px_0px_#000] p-6 mb-6">
+        <div className="bg-neo-bg-alt border-4 border-neo-border shadow-[8px_8px_0px_0px_var(--color-neo-shadow)] p-6 mb-6">
           <div className="flex items-center gap-3 mb-6">
-            <span className="w-10 h-10 flex items-center justify-center border-4 border-black bg-[#FFD93D] font-black text-lg">
+            <span className="w-10 h-10 flex items-center justify-center border-4 border-neo-border bg-neo-secondary font-black text-lg text-neo-fg">
               {currentStep + 1}
             </span>
-            <h2 className="font-black text-xl uppercase tracking-tight">
+            <h2 className="font-black text-xl uppercase tracking-tight text-neo-fg">
               {currentField.label}
               {currentField.required && (
-                <span className="text-[#FF6B6B] ml-1">*</span>
+                <span className="text-neo-accent ml-1">*</span>
               )}
             </h2>
             {currentField.type === 'multi_select' && (
-              <span className="px-2 py-1 border-2 border-black bg-[#C4B5FD] text-xs font-bold uppercase">
+              <span className="px-2 py-1 border-2 border-neo-border bg-neo-muted text-xs font-bold uppercase text-neo-fg">
                 多选
               </span>
             )}
@@ -527,13 +523,13 @@ function FormContent() {
       )}
 
       {/* 底部导航 */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-[#FFFDF5] border-t-4 border-black">
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-neo-bg border-t-4 border-neo-border">
         <div className="max-w-md mx-auto flex gap-3">
           {!isFirstStep && (
             <button
               onClick={goToPrevStep}
-              className="flex-1 py-4 border-4 border-black bg-white font-black text-base uppercase
-                shadow-[4px_4px_0px_0px_#000]
+              className="flex-1 py-4 border-4 border-neo-border bg-neo-bg-alt font-black text-base uppercase text-neo-fg
+                shadow-[4px_4px_0px_0px_var(--color-neo-shadow)]
                 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none
                 transition-all duration-100"
             >
@@ -544,8 +540,8 @@ function FormContent() {
           {!isLastStep ? (
             <button
               onClick={goToNextStep}
-              className="flex-1 py-4 border-4 border-black bg-[#FFD93D] font-black text-base uppercase
-                shadow-[4px_4px_0px_0px_#000]
+              className="flex-1 py-4 border-4 border-neo-border bg-neo-secondary font-black text-base uppercase text-neo-fg
+                shadow-[4px_4px_0px_0px_var(--color-neo-shadow)]
                 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none
                 transition-all duration-100"
             >
@@ -555,8 +551,8 @@ function FormContent() {
             <button
               onClick={handleSubmit}
               disabled={status === 'submitting'}
-              className="flex-1 py-4 border-4 border-black bg-[#FF6B6B] font-black text-base uppercase
-                shadow-[4px_4px_0px_0px_#000]
+              className="flex-1 py-4 border-4 border-neo-border bg-neo-accent font-black text-base uppercase text-neo-fg
+                shadow-[4px_4px_0px_0px_var(--color-neo-shadow)]
                 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none
                 transition-all duration-100
                 disabled:opacity-50"
@@ -573,8 +569,8 @@ function FormContent() {
 export default function Page() {
   return (
     <Suspense fallback={
-      <div className="flex items-center justify-center min-h-screen bg-[#FFFDF5]">
-        <div className="px-8 py-4 border-4 border-black bg-[#FFD93D] shadow-[8px_8px_0px_0px_#000] font-black text-xl uppercase">
+      <div className="flex items-center justify-center min-h-screen bg-neo-bg">
+        <div className="px-8 py-4 border-4 border-neo-border bg-neo-secondary shadow-[8px_8px_0px_0px_var(--color-neo-shadow)] font-black text-xl uppercase text-neo-fg">
           Loading...
         </div>
       </div>

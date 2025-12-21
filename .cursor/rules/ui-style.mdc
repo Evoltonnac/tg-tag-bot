@@ -83,37 +83,182 @@ Always aim to:
 
 ## Design Token System (The DNA)
 
-### Colors (High Saturation Light Mode Palette)
-Neo-brutalism uses a **single, definitive light mode palette**. All colors are high-saturation and unapologetic.
+### Colors (CSS Variable-based Theming)
+Neo-brutalism uses **CSS custom properties** for theming, supporting both light and dark modes while maintaining the high-saturation, unapologetic aesthetic.
+
+#### Color Token Naming Convention
+Use semantic CSS variables in Tailwind via `@theme` configuration:
+- `--color-neo-bg`: Main background canvas
+- `--color-neo-bg-alt`: Alternative/card background
+- `--color-neo-fg`: Primary text/foreground
+- `--color-neo-border`: Border color
+- `--color-neo-shadow`: Hard shadow color
+- `--color-neo-accent`: Primary action color (Red)
+- `--color-neo-secondary`: Secondary highlight (Yellow)
+- `--color-neo-muted`: Tertiary accent (Violet)
+- `--color-neo-success`: Success state (Green)
+
+#### Light Mode Palette
 
 *   **Background (Canvas)**: `#FFFDF5` (Cream/Off-White)
-    *   A warm, paper-like background that mimics aged newsprint or recycled paper. Softer than stark white, more authentic.
-    *   Use: Main page background, card interiors, contrast panels.
+    *   A warm, paper-like background that mimics aged newsprint or recycled paper.
+    *   CSS: `--color-neo-bg: #FFFDF5`
+
+*   **Background Alt (White)**: `#FFFFFF`
+    *   For cards and elevated surfaces.
+    *   CSS: `--color-neo-bg-alt: #FFFFFF`
 
 *   **Foreground (Ink)**: `#000000` (Pure Black)
-    *   The structural color. Used for ALL text, ALL borders, ALL shadows. No grays, no variations.
-    *   Use: Text, borders (`border-black`), shadows, icons.
+    *   The structural color for text, borders, shadows.
+    *   CSS: `--color-neo-fg: #000000`
+    *   CSS: `--color-neo-border: #000000`
+    *   CSS: `--color-neo-shadow: #000000`
 
 *   **Accent (Hot Red)**: `#FF6B6B`
-    *   Primary action color. Vibrant, energetic, attention-grabbing.
-    *   Use: Primary buttons (`bg-neo-accent`), hover states, important badges, call-to-action backgrounds.
+    *   Primary action color. Vibrant, energetic.
+    *   CSS: `--color-neo-accent: #FF6B6B`
 
 *   **Secondary (Vivid Yellow)**: `#FFD93D`
-    *   Secondary highlight color. Bright, cheerful, high-energy.
-    *   Use: Secondary buttons, badges, logo backgrounds, footer background, alternate section backgrounds.
+    *   Secondary highlight. Bright, cheerful.
+    *   CSS: `--color-neo-secondary: #FFD93D`
 
 *   **Muted (Soft Violet)**: `#C4B5FD`
-    *   Tertiary color for depth and variation without clashing.
-    *   Use: Subtle backgrounds (`bg-neo-muted`), card headers, FAQ answer backgrounds, decorative elements.
+    *   Tertiary color for depth and variation.
+    *   CSS: `--color-neo-muted: #C4B5FD`
 
-*   **White**: `#FFFFFF`
-    *   Used for high-contrast text on dark backgrounds (e.g., black sections, accent buttons).
-    *   Use: Text on black backgrounds, inverted buttons, contrast panels.
+*   **Success (Green)**: `#4ADE80`
+    *   Success states and confirmations.
+    *   CSS: `--color-neo-success: #4ADE80`
+
+#### Dark Mode Palette
+
+Dark mode inverts the canvas while preserving the Neo-brutalist energy. The key is maintaining **high contrast** and **vibrant accents** against a dark background.
+
+*   **Background (Deep Charcoal)**: `#1A1A1A`
+    *   A deep, warm black. Not pure black—retains subtle warmth.
+    *   CSS: `--color-neo-bg: #1A1A1A`
+
+*   **Background Alt (Charcoal)**: `#2A2A2A`
+    *   For cards and elevated surfaces. Subtle lift from background.
+    *   CSS: `--color-neo-bg-alt: #2A2A2A`
+
+*   **Foreground (Off-White)**: `#E5E5E5`
+    *   Slightly muted white for text to reduce eye strain.
+    *   CSS: `--color-neo-fg: #E5E5E5`
+
+*   **Border (Dark Gray)**: `#525252`
+    *   Darker gray for borders to blend better with dark background while remaining visible.
+    *   CSS: `--color-neo-border: #525252`
+
+*   **Shadow (Pure Black)**: `#000000`
+    *   Shadows remain black.
+    *   CSS: `--color-neo-shadow: #000000`
+
+*   **Accent (Deep Red)**: `#D64040`
+    *   Darker red for lower brightness in dark mode.
+    *   CSS: `--color-neo-accent: #D64040`
+
+*   **Secondary (Deep Gold)**: `#D4AF37`
+    *   Darker gold/yellow to prevent glare.
+    *   CSS: `--color-neo-secondary: #D4AF37`
+
+*   **Muted (Deep Violet)**: `#8B70E0`
+    *   Darker violet for background elements.
+    *   CSS: `--color-neo-muted: #8B70E0`
+
+*   **Success (Deep Green)**: `#2E8B57`
+    *   Darker sea green for success states.
+    *   CSS: `--color-neo-success: #2E8B57`
+
+#### Tailwind CSS v4 Theme Configuration
+
+Configure in `globals.css` using `@theme inline`:
+
+```css
+@import "tailwindcss";
+
+/* Light Mode (Default) */
+:root {
+  --color-neo-bg: #FFFDF5;
+  --color-neo-bg-alt: #FFFFFF;
+  --color-neo-fg: #000000;
+  --color-neo-border: #000000;
+  --color-neo-shadow: #000000;
+  --color-neo-accent: #FF6B6B;
+  --color-neo-secondary: #FFD93D;
+  --color-neo-muted: #C4B5FD;
+  --color-neo-success: #4ADE80;
+}
+
+/* Dark Mode */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-neo-bg: #1A1A1A;
+    --color-neo-bg-alt: #2A2A2A;
+    --color-neo-fg: #E5E5E5;
+    --color-neo-border: #525252;
+    --color-neo-shadow: #000000;
+    --color-neo-accent: #D64040;
+    --color-neo-secondary: #D4AF37;
+    --color-neo-muted: #8B70E0;
+    --color-neo-success: #2E8B57;
+  }
+}
+
+@theme inline {
+  --color-neo-bg: var(--color-neo-bg);
+  --color-neo-bg-alt: var(--color-neo-bg-alt);
+  --color-neo-fg: var(--color-neo-fg);
+  --color-neo-border: var(--color-neo-border);
+  --color-neo-shadow: var(--color-neo-shadow);
+  --color-neo-accent: var(--color-neo-accent);
+  --color-neo-secondary: var(--color-neo-secondary);
+  --color-neo-muted: var(--color-neo-muted);
+  --color-neo-success: var(--color-neo-success);
+}
+```
+
+#### Usage in Tailwind Classes
+
+Replace hardcoded colors with semantic classes:
+
+| Before (Hardcoded)     | After (Semantic)        |
+|------------------------|-------------------------|
+| `bg-[#FFFDF5]`         | `bg-neo-bg`             |
+| `bg-white`             | `bg-neo-bg-alt`         |
+| `text-black`           | `text-neo-fg`           |
+| `border-black`         | `border-neo-border`     |
+| `bg-[#FF6B6B]`         | `bg-neo-accent`         |
+| `bg-[#FFD93D]`         | `bg-neo-secondary`      |
+| `bg-[#C4B5FD]`         | `bg-neo-muted`          |
+| `bg-[#4ADE80]`         | `bg-neo-success`        |
+| `shadow-[4px_4px_0_#000]` | `shadow-[4px_4px_0_var(--color-neo-shadow)]` |
+
+#### Dark Mode Adjustments
+
+1.  **Lower Brightness for Eye Comfort**: Unlike the bright light mode, dark mode colors are slightly muted/darkened to reduce glare on dark backgrounds.
+    *   Red becomes `#D64040` (instead of `#FF6B6B`).
+    *   Yellow becomes `#D4AF37` (instead of `#FFD93D`).
+    *   Violet becomes `#8B70E0` (instead of `#C4B5FD`).
+
+2.  **Shadows**: In dark mode, shadows remain black.
+    *   They are naturally less visible on dark backgrounds, which is acceptable in this brutalist style.
+    *   Do NOT use white shadows or glows.
+
+3.  **Background Patterns**: Adjust pattern colors to be very subtle:
+   ```css
+   .dark-halftone {
+     background-image: radial-gradient(rgba(255,255,255,0.08) 1px, transparent 1px);
+   }
+   ```
+
+3. **Text Contrast**: Maintain high contrast—off-white text on dark backgrounds.
 
 **Color Usage Rules:**
-- **Never use subtle grays.** It's black or a color, never #333 or #666.
+- **Never use subtle grays.** It's semantic colors only—no `#333` or `#666`.
 - **High contrast is mandatory.** All text must pass WCAG AA on its background.
-- **Color blocking:** Sections alternate between cream, secondary, muted, and black to create visual rhythm.
+- **Color blocking:** Sections alternate between bg, secondary, muted, and inverted (fg as bg) to create visual rhythm.
+- **Use CSS variables** instead of hardcoded hex values for maintainability.
 
 ### Typography
 *   **Family**: `Space Grotesk` (Google Font: `font-family: 'Space Grotesk', sans-serif`)
