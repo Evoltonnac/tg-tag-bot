@@ -204,12 +204,18 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     if (url.searchParams.get('webhook') === 'set') {
       let webhookUrl = `${url.origin}/api/bot`;
-      const secret = url.searchParams.get('secret') || process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+      const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production';
+      // 生产环境只使用用户显式提供的 secret，避免泄漏
+      // 非生产环境可以自动读取环境变量
+      const secret = isProduction 
+        ? url.searchParams.get('secret') 
+        : (url.searchParams.get('secret') || process.env.VERCEL_AUTOMATION_BYPASS_SECRET);
       if (secret) {
         webhookUrl += `?x-vercel-protection-bypass=${secret}`;
       }
       await bot.api.setWebhook(webhookUrl);
-      return new Response(`Webhook set to ${webhookUrl}`, { status: 200 });
+      // 不在响应中暴露完整 URL，避免泄漏 secret
+      return new Response(`Webhook set to ${url.origin}/api/bot${secret ? ' (with bypass secret)' : ''}`, { status: 200 });
     }
     return new Response('Bot is running', { status: 200 });
 }

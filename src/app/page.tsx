@@ -211,7 +211,7 @@ export default function Home() {
               ⚡ 快速设置
             </button>
             <a
-              href="https://t.me/"
+              href={`https://t.me/${process.env.BOT_USERNAME || ''}`}
               target="_blank"
               rel="noopener noreferrer"
               className="px-6 py-4 border-4 border-black bg-white font-black text-base uppercase
@@ -219,7 +219,7 @@ export default function Home() {
                 hover:bg-[#C4B5FD] transition-all duration-100
                 active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
             >
-              📱 打开 Telegram
+              📱 私聊 Bot
             </a>
           </div>
         </div>
