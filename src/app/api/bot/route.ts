@@ -10,10 +10,13 @@ if (!token) throw new Error('TELEGRAM_BOT_TOKEN is not set');
 
 const bot = new Bot(token);
 
+// 存储当前请求的 origin（用于在同一请求中被 bot handler 访问）
+let currentRequestOrigin = '';
+
 // Utility: Build Web App URL
 function getWebAppUrl(path: string, params: Record<string, string | number>) {
-  const host = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://your-domain.vercel.app');
-  const baseUrl = host.startsWith('http') ? host : `https://${host}`;
+  // 优先使用请求中的 origin，然后是环境变量
+  const baseUrl = currentRequestOrigin || process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://localhost:3000');
   const searchParams = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => searchParams.append(key, String(value)));
   return `${baseUrl}/${path}?${searchParams.toString()}`;
@@ -198,7 +201,16 @@ bot.on(['channel_post:photo', 'channel_post:video', 'channel_post:document', 'ch
   }
 });
 
-export const POST = webhookCallback(bot, 'std/http');
+// 包装 webhookCallback 以在处理前设置当前请求的 origin
+const handleWebhook = webhookCallback(bot, 'std/http');
+
+export async function POST(req: Request) {
+  // 从请求中获取 origin 并设置，供 getWebAppUrl 使用
+  const url = new URL(req.url);
+  currentRequestOrigin = url.origin;
+  
+  return handleWebhook(req);
+}
 
 export async function GET(req: Request) {
     const url = new URL(req.url);
