@@ -4,10 +4,6 @@ import { ChatConfig } from '@/lib/types';
 
 export const runtime = 'edge';
 
-/**
- * 简化后的 API：只获取 config
- * 标签解析已经在 bot webhook 中完成，通过 URL 参数传入
- */
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const chatId = searchParams.get('chat_id');
@@ -28,3 +24,4 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
+

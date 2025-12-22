@@ -1,8 +1,9 @@
 import { Bot, webhookCallback, InlineKeyboard } from 'grammy';
 import { kv } from '@vercel/kv';
 import { ChatConfig } from '@/lib/types';
-import { parseTagBlockSmart } from '@/lib/messages';
-import {
+import { 
+  parseTagBlockSmart, 
+  removeTagBlockSmart,
   MSG_WELCOME,
   MSG_CONFIG_PROMPT,
   msgConfigEntry,
@@ -15,6 +16,69 @@ import {
   MSG_ERR_INVALID_PARAM,
   MSG_ERR_WRONG_CHAT,
 } from '@/lib/messages';
+
+// 消息内容接口（用于 extractRawContent）
+interface MessageContent {
+  text?: string;
+  caption?: string;
+  photo?: { file_id: string }[];
+  video?: { file_name?: string };
+  document?: { file_name?: string };
+  audio?: { title?: string; file_name?: string };
+  animation?: object;
+  voice?: object;
+  video_note?: object;
+  sticker?: { emoji?: string };
+  link_preview_options?: { url?: string };
+}
+
+// 从消息中提取原始内容（除 tag block 以外的所有内容描述）
+function extractRawContent(msg: MessageContent): string {
+  const parts: string[] = [];
+  
+  // 获取文本/caption 内容（移除 tag block）
+  const textContent = msg.caption || msg.text || '';
+  if (textContent) {
+    parts.push(removeTagBlockSmart(textContent));
+  }
+  
+  // 添加媒体类型标识
+  if (msg.photo && msg.photo.length > 0) {
+    parts.push('[图片]');
+  }
+  if (msg.video) {
+    const info = msg.video.file_name ? `[视频: ${msg.video.file_name}]` : '[视频]';
+    parts.push(info);
+  }
+  if (msg.document) {
+    const info = msg.document.file_name ? `[文档: ${msg.document.file_name}]` : '[文档]';
+    parts.push(info);
+  }
+  if (msg.audio) {
+    const info = msg.audio.title || msg.audio.file_name;
+    parts.push(info ? `[音频: ${info}]` : '[音频]');
+  }
+  if (msg.animation) {
+    parts.push('[动图/GIF]');
+  }
+  if (msg.voice) {
+    parts.push('[语音消息]');
+  }
+  if (msg.video_note) {
+    parts.push('[视频消息]');
+  }
+  if (msg.sticker) {
+    const info = msg.sticker.emoji ? `[贴纸: ${msg.sticker.emoji}]` : '[贴纸]';
+    parts.push(info);
+  }
+  
+  // 提取链接预览信息
+  if (msg.link_preview_options?.url) {
+    parts.push(`[链接: ${msg.link_preview_options.url}]`);
+  }
+  
+  return parts.join('\n').trim();
+}
 
 export const runtime = 'edge';
 
@@ -108,18 +172,21 @@ bot.command('start', async (ctx) => {
     const [, channelId, messageId] = tagMatch;
     
     try {
-      // Use copyMessage instead of forwardMessage to avoid copying the InlineKeyboard buttons
-      // copyMessage sends a clean copy without reply_markup
-      const copyMsg = await ctx.api.copyMessage(ctx.chat.id, channelId, parseInt(messageId));
+      // Use forwardMessage to get the content (copyMessage only returns ID)
+      const forwardMsg = await ctx.api.forwardMessage(ctx.chat.id, channelId, parseInt(messageId));
       
+      // 提取消息的完整原始内容（文字 + 媒体信息）
+      const rawData = extractRawContent(forwardMsg);
+
       const replyMsg = await ctx.reply(MSG_TAG_PREPARING, { parse_mode: 'HTML' });
 
       const appUrlParams: Record<string, string | number> = { 
         chat_id: channelId, 
         message_id: messageId,
         private_chat_id: ctx.chat.id,
-        user_msg_id: copyMsg.message_id,
-        bot_msg_id: replyMsg.message_id
+        user_msg_id: forwardMsg.message_id,
+        bot_msg_id: replyMsg.message_id,
+        raw_data: rawData
       };
 
       // Try to get channel username for better link
@@ -160,7 +227,9 @@ bot.on('message', async (ctx) => {
         // Check if we have config for this channel
         const config = await kv.get<ChatConfig>(`config:${channelId}`);
         if (config) {
-            // 获取转发消息的内容并解析标签
+            // 提取消息的完整原始内容（文字 + 媒体信息）
+            const rawData = extractRawContent(ctx.msg);
+            // 解析已有的标签
             const caption = ctx.msg.caption || ctx.msg.text || '';
             const parsedTags = parseTagBlockSmart(caption, config.fields);
 
@@ -174,7 +243,8 @@ bot.on('message', async (ctx) => {
               private_chat_id: ctx.chat.id,
               user_msg_id: ctx.msg.message_id,
               bot_msg_id: replyMsg.message_id,
-              tags: encodeURIComponent(JSON.stringify(parsedTags))
+              tags: encodeURIComponent(JSON.stringify(parsedTags)),
+              raw_data: rawData
             };
             
             if ('username' in origin.chat && origin.chat.username) {

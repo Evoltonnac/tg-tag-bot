@@ -108,18 +108,23 @@ export async function POST(req: NextRequest) {
     // 3. Clean and Rebuild
     const cleanCaption = removeTagBlockSmart(currentCaption);
     
-    // Update Dynamic Options
+    // Update Dynamic Options (支持逗号分隔的多选值，并去重)
     let configUpdated = false;
     for (const field of config.fields) {
         if (field.allow_new && field.options && tags[field.key]) {
              const val = tags[field.key];
-             // Simple check: if not in options, add it
-             // Note: Split if multi-select/tags? 
-             // For now assume exact match or simple string
-             if (!field.options.includes(val)) {
-                 field.options.push(val);
-                 configUpdated = true;
+             // 处理逗号分隔的多选值
+             const values = val.includes(', ') ? val.split(', ').map((v: string) => v.trim()).filter(Boolean) : [val];
+             
+             for (const singleVal of values) {
+                 if (singleVal && !field.options.includes(singleVal)) {
+                     field.options.push(singleVal);
+                     configUpdated = true;
+                 }
              }
+             
+             // 去重处理
+             field.options = [...new Set(field.options)];
         }
     }
     if (configUpdated) await kv.set(`config:${chatId}`, config);

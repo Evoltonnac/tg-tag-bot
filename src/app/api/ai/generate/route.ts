@@ -1,0 +1,202 @@
+import { kv } from '@vercel/kv';
+import { NextRequest } from 'next/server';
+import { ChatConfig } from '@/lib/types';
+import { mockSseData, MOCK_SSE_DELAY } from '@/lib/mock-sse-data';
+
+export const runtime = 'edge';
+
+// 通过环境变量或请求参数启用 mock 模式
+const MOCK_SSE_ENABLED = process.env.MOCK_SSE === 'true';
+
+export async function POST(req: NextRequest) {
+    const { chatId, query, rawData, mock } = await req.json();
+    
+    // 如果启用了 mock 模式（环境变量或请求参数）
+    if (MOCK_SSE_ENABLED || mock) {
+        return createMockSseResponse();
+    }
+
+    if (!chatId) {
+        return new Response(JSON.stringify({ error: 'Missing chatId' }), { 
+            status: 400, 
+            headers: { 'Content-Type': 'application/json' } 
+        });
+    }
+
+    const config = await kv.get<ChatConfig>(`config:${chatId}`);
+    if (!config || !config.ai_config || !config.ai_config.enabled || !config.ai_config.dify_api_key) {
+        return new Response(JSON.stringify({ error: 'AI not configured' }), { 
+            status: 403, 
+            headers: { 'Content-Type': 'application/json' } 
+        });
+    }
+
+    const aiConfig = config.ai_config;
+    const baseUrl = (aiConfig.dify_base_url || 'https://api.dify.ai/v1').replace(/\/$/, '');
+    
+    // Prepare Schema
+    const schema = config.fields.map(f => ({
+        key: f.key,
+        label: f.label,
+        type: f.type,
+        options: f.options
+    }));
+
+    const inputs = {
+        description: aiConfig.description || '',
+        form_schema: JSON.stringify(schema),
+        raw_data: rawData || ''
+    };
+
+    // 调用 Dify API
+    const response = await fetch(`${baseUrl}/chat-messages`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${aiConfig.dify_api_key}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            inputs,
+            query: query || 'auto-fill',
+            response_mode: 'streaming',
+            user: `tg-bot-${chatId}`,
+        })
+    });
+
+    if (!response.ok) {
+        const err = await response.text();
+        console.error('Dify Error:', err);
+        return new Response(JSON.stringify({ error: 'Dify API Error: ' + err }), { 
+            status: response.status, 
+            headers: { 'Content-Type': 'application/json' } 
+        });
+    }
+
+    // 创建 TransformStream 转发 SSE 给前端
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
+    
+    let fullAnswer = '';
+    let buffer = '';
+    
+    const transformStream = new TransformStream({
+        async transform(chunk, controller) {
+            buffer += decoder.decode(chunk, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || ''; // 保留不完整的最后一行
+            
+            for (const line of lines) {
+                if (!line.startsWith('data: ')) continue;
+                
+                try {
+                    const data = JSON.parse(line.slice(6));
+                    const event = data.event;
+                    
+                    // 转发步骤信息给前端
+                    if (event === 'agent_thought') {
+                        // Agent 思考步骤
+                        const step = {
+                            type: 'thought',
+                            thought: data.thought || '',
+                            tool: data.tool || '',
+                            tool_input: data.tool_input || ''
+                        };
+                        controller.enqueue(encoder.encode(`data: ${JSON.stringify(step)}\n\n`));
+                    } else if (event === 'agent_message') {
+                        // Agent 最终回答（增量）
+                        fullAnswer += data.answer || '';
+                    } else if (event === 'message') {
+                        // 普通消息（非 Agent）
+                        fullAnswer += data.answer || '';
+                    } else if (event === 'message_end') {
+                        // 消息结束，解析 JSON 并返回
+                        const result = parseJsonFromAnswer(fullAnswer);
+                        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done', data: result, raw: fullAnswer })}\n\n`));
+                    } else if (event === 'error') {
+                        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', error: data.message || 'Unknown error' })}\n\n`));
+                    }
+                } catch {
+                    // 忽略解析错误
+                }
+            }
+        },
+        async flush(controller) {
+            // 处理剩余 buffer
+            if (buffer.startsWith('data: ')) {
+                try {
+                    const data = JSON.parse(buffer.slice(6));
+                    if (data.event === 'message_end') {
+                        const result = parseJsonFromAnswer(fullAnswer);
+                        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done', data: result, raw: fullAnswer })}\n\n`));
+                    }
+                } catch {
+                    // 忽略
+                }
+            }
+            // 如果没收到 message_end，也尝试解析
+            if (fullAnswer && !buffer.includes('message_end')) {
+                const result = parseJsonFromAnswer(fullAnswer);
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done', data: result, raw: fullAnswer })}\n\n`));
+            }
+        }
+    });
+
+    return new Response(response.body?.pipeThrough(transformStream), {
+        headers: {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+        },
+    });
+}
+
+function parseJsonFromAnswer(answerText: string): object | null {
+    let jsonStr = answerText.trim();
+    
+    // 处理 markdown code block
+    if (jsonStr.includes('```json')) {
+        jsonStr = jsonStr.split('```json')[1]?.split('```')[0]?.trim() || jsonStr;
+    } else if (jsonStr.includes('```')) {
+        jsonStr = jsonStr.split('```')[1]?.split('```')[0]?.trim() || jsonStr;
+    }
+    
+    // 提取 JSON 对象
+    const firstBrace = jsonStr.indexOf('{');
+    const lastBrace = jsonStr.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace !== -1) {
+        jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);
+    }
+
+    try {
+        return JSON.parse(jsonStr);
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * 创建 Mock SSE 响应，用于调试
+ */
+function createMockSseResponse(): Response {
+    const encoder = new TextEncoder();
+    const lines = mockSseData.split('\n\n').filter(line => line.trim());
+    
+    const stream = new ReadableStream({
+        async start(controller) {
+            for (const line of lines) {
+                // 延迟发送，模拟真实的流式响应
+                await new Promise(resolve => setTimeout(resolve, MOCK_SSE_DELAY));
+                controller.enqueue(encoder.encode(line + '\n\n'));
+            }
+            controller.close();
+        }
+    });
+
+    return new Response(stream, {
+        headers: {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+        },
+    });
+}

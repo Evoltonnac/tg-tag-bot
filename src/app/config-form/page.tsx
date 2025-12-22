@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense, useRef, KeyboardEvent } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { ChatConfig, FieldConfig } from '@/lib/types';
+import { ChatConfig, FieldConfig, AiConfig } from '@/lib/types';
 
 declare global {
   interface Window {
@@ -319,11 +319,107 @@ function FieldCard({
   );
 }
 
+function AiConfigEditor({
+  config,
+  onUpdate
+}: {
+  config: AiConfig | undefined;
+  onUpdate: (config: AiConfig) => void;
+}) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const data = config || { enabled: false, description: '', dify_api_key: '' };
+
+  return (
+    <div className="mt-8 bg-neo-bg-alt border-4 border-neo-border shadow-[6px_6px_0px_0px_var(--color-neo-shadow)]">
+      <div 
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="flex items-center justify-between p-4 bg-neo-accent border-b-4 border-neo-border cursor-pointer hover:bg-neo-accent-hover transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">✨</span>
+          <h3 className="font-black text-lg uppercase tracking-tight text-neo-fg">AI 助手配置</h3>
+        </div>
+        <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-neo-fg uppercase">{data.enabled ? '已启用' : '未启用'}</span>
+            <span className="font-black text-xl text-neo-fg">{isExpanded ? '−' : '+'}</span>
+        </div>
+      </div>
+
+      {isExpanded && (
+        <div className="p-4 space-y-4">
+          <div className="flex items-center gap-3 p-3 border-4 border-neo-border bg-neo-secondary/20">
+            <input
+              type="checkbox"
+              id="ai-enabled"
+              checked={data.enabled}
+              onChange={(e) => onUpdate({ ...data, enabled: e.target.checked })}
+              className="w-6 h-6 border-4 border-neo-border accent-neo-accent cursor-pointer"
+            />
+            <label htmlFor="ai-enabled" className="font-bold text-neo-fg cursor-pointer select-none">
+              启用 AI 填写助手
+            </label>
+          </div>
+
+          {data.enabled && (
+            <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wide text-neo-fg-muted mb-1">
+                  Dify API Key <span className="text-neo-accent">*</span>
+                </label>
+                <input
+                  type="password"
+                  value={data.dify_api_key || ''}
+                  onChange={(e) => onUpdate({ ...data, dify_api_key: e.target.value })}
+                  placeholder="app-..."
+                  className="w-full px-3 py-2 border-4 border-neo-border font-bold text-base bg-neo-bg-alt text-neo-fg
+                    focus:bg-neo-secondary focus:shadow-[4px_4px_0px_0px_var(--color-neo-shadow)] focus:outline-none"
+                />
+                <p className="mt-1 text-xs font-bold text-neo-fg-muted">
+                  请输入 Dify App 的 API Key
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wide text-neo-fg-muted mb-1">
+                  Dify Base URL (可选)
+                </label>
+                <input
+                  type="text"
+                  value={data.dify_base_url || ''}
+                  onChange={(e) => onUpdate({ ...data, dify_base_url: e.target.value })}
+                  placeholder="https://api.dify.ai/v1"
+                  className="w-full px-3 py-2 border-4 border-neo-border font-bold text-base bg-neo-bg-alt text-neo-fg
+                    focus:bg-neo-secondary focus:shadow-[4px_4px_0px_0px_var(--color-neo-shadow)] focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wide text-neo-fg-muted mb-1">
+                  默认任务描述 (Prompt Description)
+                </label>
+                <textarea
+                  value={data.description || ''}
+                  onChange={(e) => onUpdate({ ...data, description: e.target.value })}
+                  placeholder="例如：根据电影描述提取信息并打标..."
+                  rows={3}
+                  className="w-full px-3 py-2 border-4 border-neo-border font-bold text-base bg-neo-bg-alt text-neo-fg
+                    focus:bg-neo-secondary focus:shadow-[4px_4px_0px_0px_var(--color-neo-shadow)] focus:outline-none resize-none"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ConfigEditor() {
   const searchParams = useSearchParams();
   const chatId = searchParams.get('chat_id');
   
   const [fields, setFields] = useState<FieldConfig[]>([]);
+  const [aiConfig, setAiConfig] = useState<AiConfig | undefined>(undefined);
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -341,6 +437,7 @@ function ConfigEditor() {
         .then(data => {
           if (data && data.fields) {
             setFields(data.fields);
+            setAiConfig(data.ai_config);
           } else {
             // 默认初始配置
             setFields([
@@ -387,7 +484,7 @@ function ConfigEditor() {
     setSaving(true);
     
     try {
-      const config: ChatConfig = { fields };
+      const config: ChatConfig = { fields, ai_config: aiConfig };
       const res = await fetch('/api/save-config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -465,6 +562,11 @@ function ConfigEditor() {
           + 添加新字段
         </button>
       </div>
+
+      <AiConfigEditor 
+        config={aiConfig} 
+        onUpdate={setAiConfig} 
+      />
 
       {/* 底部保存按钮 */}
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-neo-bg border-t-4 border-neo-border">
