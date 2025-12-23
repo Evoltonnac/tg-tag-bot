@@ -1,10 +1,10 @@
 import { FieldConfig } from './types';
 
 /**
- * 规范化标签值：将空格转换为下划线，确保 hashtag 不会断开
+ * 规范化标签值：去掉开头的#，将空格转换为下划线，确保 hashtag 不会断开
  */
 export function normalizeTagValue(value: string): string {
-  return value.trim().replace(/\s+/g, '_');
+  return value.trim().replace(/^#/, '').replace(/\s+/g, '_');
 }
 
 export const TAG_BLOCK_START = '==============\n🏷️ Tags';
@@ -42,7 +42,9 @@ export function parseTagBlock(text: string, fields: FieldConfig[]): Record<strin
       const lineMatch = line.match(/(?:🔹|🔸)\s*(.*?):\s*(.*)/);
       if (lineMatch) {
         const label = lineMatch[1].trim();
-        const value = lineMatch[2].trim();
+        // Value 可能包含多个 #tag，去掉每个标签开头的 #
+        const rawValue = lineMatch[2].trim();
+        const value = rawValue.split(/\s+/).map(v => v.replace(/^#/, '')).join(',');
         
         const key = labelToKey[label];
         if (key) {

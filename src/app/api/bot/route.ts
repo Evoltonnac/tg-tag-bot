@@ -1,4 +1,4 @@
-import { Bot, webhookCallback, InlineKeyboard } from 'grammy';
+import { Bot, webhookCallback, InlineKeyboard, Keyboard } from 'grammy';
 import { kv } from '@vercel/kv';
 import { ChatConfig } from '@/lib/types';
 import { 
@@ -15,6 +15,11 @@ import {
   MSG_ERR_MESSAGE_NOT_FOUND,
   MSG_ERR_INVALID_PARAM,
   MSG_ERR_WRONG_CHAT,
+  MSG_SEAMLESS_FORWARD_PROMPT,
+  MSG_SEAMLESS_SELECT_CHANNEL,
+  msgSeamlessForwardSuccess,
+  MSG_ERR_FORWARD_FAILED,
+  MSG_ERR_UNSUPPORTED_MESSAGE,
 } from '@/lib/messages';
 
 // 消息内容接口（用于 extractRawContent）
@@ -30,6 +35,19 @@ interface MessageContent {
   video_note?: object;
   sticker?: { emoji?: string };
   link_preview_options?: { url?: string };
+}
+
+// 待转发消息接口
+interface PendingForward {
+  userId: number;
+  chatId: number;
+  messageId: number;
+  createdAt: number;
+}
+
+// 生成待转发消息的 KV key
+function getPendingForwardKey(userId: number): string {
+  return `pending_forward:${userId}`;
 }
 
 // 从消息中提取原始内容（除 tag block 以外的所有内容描述）
@@ -171,6 +189,9 @@ bot.command('start', async (ctx) => {
   if (tagMatch) {
     const [, channelId, messageId] = tagMatch;
     
+    // 删除用户发送的 /start 命令消息（保持聊天整洁）
+    ctx.api.deleteMessage(ctx.chat.id, ctx.msg.message_id).catch(() => {});
+    
     try {
       // Use forwardMessage to get the content (copyMessage only returns ID)
       const forwardMsg = await ctx.api.forwardMessage(ctx.chat.id, channelId, parseInt(messageId));
@@ -213,14 +234,84 @@ bot.command('start', async (ctx) => {
   await ctx.reply(MSG_ERR_INVALID_PARAM, { parse_mode: 'HTML' });
 });
 
+// 6. Handle chat_shared event (User selected a channel for seamless forward)
+bot.on('message:chat_shared', async (ctx) => {
+    const chatShared = ctx.msg.chat_shared;
+    if (!chatShared || chatShared.request_id !== 1) return;
+    
+    const targetChannelId = chatShared.chat_id;
+    const userId = ctx.from!.id;
+    
+    // 获取待转发的消息信息
+    const pendingData = await kv.get<PendingForward>(getPendingForwardKey(userId));
+    if (!pendingData) {
+        return ctx.reply(MSG_ERR_MESSAGE_NOT_FOUND, { parse_mode: 'HTML' });
+    }
+    
+    // 清除待转发数据
+    await kv.del(getPendingForwardKey(userId));
+    
+    try {
+        // 使用 copyMessage 无痕转发到目标频道
+        const copiedMsg = await ctx.api.copyMessage(
+            targetChannelId,
+            pendingData.chatId,
+            pendingData.messageId,
+        );
+        
+        // 获取频道配置，如果已配置则为新消息添加标签按钮
+        const config = await kv.get<ChatConfig>(`config:${targetChannelId}`);
+        if (config) {
+            const botUsername = ctx.me.username;
+            const deepLinkPayload = `tag_${targetChannelId}_${copiedMsg.message_id}`;
+            const deepLinkUrl = `https://t.me/${botUsername}?start=${deepLinkPayload}`;
+            const keyboard = new InlineKeyboard().url('🏷️ EDIT TAGS', deepLinkUrl);
+            
+            try {
+                await ctx.api.editMessageReplyMarkup(targetChannelId, copiedMsg.message_id, {
+                    reply_markup: keyboard,
+                });
+            } catch (e) {
+                console.error('Failed to add button to copied message:', e);
+            }
+        }
+        
+        // 获取频道信息用于显示
+        let channelTitle = String(targetChannelId);
+        try {
+            const chatInfo = await ctx.api.getChat(targetChannelId);
+            if ('title' in chatInfo && chatInfo.title) {
+                channelTitle = chatInfo.title;
+            }
+        } catch {
+            // 忽略获取频道信息的错误
+        }
+        
+        // 发送成功消息，并移除键盘
+        await ctx.reply(msgSeamlessForwardSuccess(channelTitle), { 
+            parse_mode: 'HTML',
+            reply_markup: { remove_keyboard: true },
+        });
+    } catch (error) {
+        console.error('Seamless forward error:', error);
+        await ctx.reply(MSG_ERR_FORWARD_FAILED, { 
+            parse_mode: 'HTML',
+            reply_markup: { remove_keyboard: true },
+        });
+    }
+});
+
 // 3. Handle Forwarded Messages (User forwards channel post to Bot)
-bot.on('message', async (ctx) => {
+bot.on('message:forward_origin', async (ctx) => {
     // Only handle private chats
     if (ctx.chat.type !== 'private') return;
 
     // Check if forwarded
     const origin = ctx.msg.forward_origin;
-    if (origin && origin.type === 'channel') {
+    if (!origin) return;
+    
+    // 如果是来自已配置频道的转发，走打标流程
+    if (origin.type === 'channel') {
         const channelId = origin.chat.id;
         const messageId = origin.message_id;
 
@@ -257,6 +348,76 @@ bot.on('message', async (ctx) => {
             // Edit the message to add the button
             return ctx.api.editMessageText(ctx.chat.id, replyMsg.message_id, MSG_FORWARD_DETECTED, { reply_markup: keyboard, parse_mode: 'HTML' });
         }
+        // 如果来自频道但未配置，继续走无痕转发流程
+    }
+    
+    // 5. Handle forwarded messages for seamless forward
+    // 所有转发消息（来自其他频道、用户、群组等）都可以无痕转发
+    {
+        // 检查消息是否包含可转发的内容
+        const msg = ctx.msg;
+        const hasContent = msg.text || msg.caption || msg.photo || msg.video || 
+                          msg.document || msg.audio || msg.animation || 
+                          msg.voice || msg.video_note || msg.sticker;
+        
+        if (!hasContent) {
+            return ctx.reply(MSG_ERR_UNSUPPORTED_MESSAGE, { parse_mode: 'HTML' });
+        }
+        
+        // 存储待转发消息信息
+        const pendingData: PendingForward = {
+            userId: ctx.from!.id,
+            chatId: ctx.chat.id,
+            messageId: ctx.msg.message_id,
+            createdAt: Date.now(),
+        };
+        
+        await kv.set(getPendingForwardKey(ctx.from!.id), pendingData, { ex: 300 }); // 5分钟过期
+        
+        // 发送带 KeyboardButtonRequestChat 的消息
+        // 使用 grammY 的 Keyboard 类创建 requestChat 按钮
+        // 注意：ChatAdministratorRights 类型定义要求所有字段，但 Telegram API 实际只需部分字段
+        const keyboard = new Keyboard()
+            .requestChat(MSG_SEAMLESS_SELECT_CHANNEL, 1, {
+                chat_is_channel: true,
+                user_administrator_rights: {
+                    is_anonymous: false,
+                    can_manage_chat: false,
+                    can_delete_messages: false,
+                    can_manage_video_chats: false,
+                    can_restrict_members: false,
+                    can_promote_members: false,
+                    can_change_info: false,
+                    can_invite_users: false,
+                    can_post_stories: false,
+                    can_edit_stories: false,
+                    can_delete_stories: false,
+                    can_post_messages: true,
+                },
+                bot_administrator_rights: {
+                    is_anonymous: false,
+                    can_manage_chat: false,
+                    can_delete_messages: false,
+                    can_manage_video_chats: false,
+                    can_restrict_members: false,
+                    can_promote_members: false,
+                    can_change_info: false,
+                    can_invite_users: false,
+                    can_post_stories: false,
+                    can_edit_stories: false,
+                    can_delete_stories: false,
+                    can_post_messages: true,
+                    can_edit_messages: false,
+                },
+                bot_is_member: true,
+            })
+            .resized()
+            .oneTime();
+        
+        return ctx.reply(MSG_SEAMLESS_FORWARD_PROMPT, { 
+            reply_markup: keyboard,
+            parse_mode: 'HTML',
+        });
     }
 });
 

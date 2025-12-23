@@ -105,6 +105,58 @@ export const MSG_ERR_WRONG_CHAT = `<b>━━ ERROR ━━</b>
 🟥 <b>WRONG CHAT</b>
 请在频道或群组中使用此命令`;
 
+// ═══════════════════════════════════════════════════════
+// 📤 SEAMLESS FORWARD MESSAGES
+// ═══════════════════════════════════════════════════════
+
+/**
+ * 无痕转发 - 检测到消息，提示选择频道
+ */
+export const MSG_SEAMLESS_FORWARD_PROMPT = `<b>━━ SEAMLESS FORWARD ━━</b>
+
+🟨 <b>检测到消息</b>
+点击下方按钮选择要转发到的频道
+
+<i>Bot 会去除转发来源，无痕发布</i>`;
+
+/**
+ * 无痕转发 - 选择频道按钮文字
+ */
+export const MSG_SEAMLESS_SELECT_CHANNEL = '📢 选择目标频道';
+
+/**
+ * 无痕转发 - 正在转发
+ */
+export const MSG_SEAMLESS_FORWARDING = `<b>━━ FORWARDING ━━</b>
+
+🟨 正在转发到频道...`;
+
+/**
+ * 无痕转发 - 成功
+ */
+export function msgSeamlessForwardSuccess(channelTitle: string): string {
+  return `<b>━━ SUCCESS ━━</b>
+
+🟩 <b>FORWARDED</b>
+已无痕转发至 <b>${channelTitle}</b>`;
+}
+
+/**
+ * 无痕转发 - 失败
+ */
+export const MSG_ERR_FORWARD_FAILED = `<b>━━ ERROR ━━</b>
+
+🟥 <b>FORWARD FAILED</b>
+无法转发消息，请确保 Bot 是目标频道的管理员`;
+
+/**
+ * 无痕转发 - 不支持的消息类型
+ */
+export const MSG_ERR_UNSUPPORTED_MESSAGE = `<b>━━ ERROR ━━</b>
+
+🟥 <b>UNSUPPORTED</b>
+不支持的消息类型`;
+
 /**
  * 成功通知消息
  */
