@@ -40,7 +40,6 @@ function AiFillModal({
   onClose,
   onApply,
   config,
-  currentData,
   rawText,
   chatId
 }: {
@@ -48,7 +47,6 @@ function AiFillModal({
   onClose: () => void;
   onApply: (data: Record<string, string | string[]>) => void;
   config: ChatConfig;
-  currentData: Record<string, string | string[]>;
   rawText: string;
   chatId: string;
 }) {
@@ -699,14 +697,10 @@ function FormContent() {
       return;
     }
 
-    const parsedTags: Record<string, string | string[]> = {};
+    let parsedTags: Record<string, string | string[]> = {};
     if (tagsParam) {
       try {
-        const raw = JSON.parse(decodeURIComponent(tagsParam));
-        // 转换格式：确保 multi_select 是数组
-        Object.keys(raw).forEach(key => {
-          parsedTags[key] = raw[key];
-        });
+        parsedTags = JSON.parse(decodeURIComponent(tagsParam));
       } catch (e) {
         console.warn('Failed to parse tags from URL:', e);
       }
@@ -720,18 +714,49 @@ function FormContent() {
         setConfig(data.config);
         setRawText(rawDataParam || '');
         
-        // 初始化 formData，确保 multi_select 类型是数组
+        // 初始化 formData 和 customOptions，逻辑与 handleAiApply 一致
         const initialData: Record<string, string | string[]> = {};
+        const initialCustomOptions: Record<string, string[]> = {};
+        
         data.config.fields.forEach((field: FieldConfig) => {
+          const val = parsedTags[field.key];
+          
           if (field.type === 'multi_select') {
-            const parsed = parsedTags[field.key];
-            initialData[field.key] = Array.isArray(parsed) ? parsed : (parsed ? [parsed] : []);
+            // multi_select: 规范化每个值
+            const rawArr = Array.isArray(val) ? val : (val ? [val] : []);
+            const newArr = rawArr.map((v: string) => normalizeTagValue(String(v))).filter(Boolean);
+            initialData[field.key] = newArr;
+            
+            // 检查是否需要添加到自定义选项
+            const existingOptions = field.options || [];
+            const toAdd: string[] = [];
+            newArr.forEach((v: string) => {
+              if (!existingOptions.includes(v)) {
+                toAdd.push(v);
+              }
+            });
+            if (toAdd.length > 0) {
+              initialCustomOptions[field.key] = toAdd;
+            }
+          } else if (field.type === 'select') {
+            // select: 规范化值
+            const rawVal = Array.isArray(val) ? val[0] : val;
+            const strVal = rawVal ? normalizeTagValue(String(rawVal)) : '';
+            initialData[field.key] = strVal;
+            
+            // 检查是否需要添加到自定义选项
+            const existingOptions = field.options || [];
+            if (strVal && !existingOptions.includes(strVal)) {
+              initialCustomOptions[field.key] = [strVal];
+            }
           } else {
-            initialData[field.key] = parsedTags[field.key] || '';
+            // text: 保持原样
+            initialData[field.key] = Array.isArray(val) ? val.join(', ') : (val || '');
           }
         });
         
         setFormData(initialData);
+        setCustomOptions(initialCustomOptions);
         setStatus('ready');
       })
       .catch(err => {
@@ -740,9 +765,9 @@ function FormContent() {
         setStatusMsg(err.message || 'Failed to load config');
       });
 
-  }, [chatId, messageId, tagsParam]);
+  }, [chatId, messageId, tagsParam, rawDataParam]);
 
-  const handleAiApply = (data: any) => {
+  const handleAiApply = (data: Record<string, string | string[]>) => {
     const newFormData = { ...formData };
     const newCustomOptions = { ...customOptions };
     
@@ -1044,7 +1069,6 @@ function FormContent() {
             onClose={() => setIsAiOpen(false)}
             onApply={handleAiApply}
             config={config}
-            currentData={formData}
             rawText={rawText}
             chatId={chatId || ''}
         />

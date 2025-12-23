@@ -1,5 +1,3 @@
-import { FieldConfig } from './types';
-
 /**
  * 规范化标签值：去掉开头的#，将空格转换为下划线，确保 hashtag 不会断开
  */
@@ -7,95 +5,17 @@ export function normalizeTagValue(value: string): string {
   return value.trim().replace(/^#/, '').replace(/\s+/g, '_');
 }
 
-export const TAG_BLOCK_START = '==============\n🏷️ Tags';
-export const TAG_BLOCK_END = '==============';
-
-// Regex to capture the entire block including markers
-// Matches:
-// 1. Start Marker
-// 2. Content (lazy match until End Marker)
-// 3. End Marker
-// 4. Optional newline
-export const TAG_BLOCK_REGEX = /==============\n🏷️ Tags\n([\s\S]*?)\n==============\n?/;
-
 /**
- * Parses existing tag block from text into a Key-Value map.
- * Needs config to map Labels back to Keys.
+ * 智能解析 value：
+ * - 如果 value 包含 #，则解析为 string[]（去掉每个标签的 # 前缀）
+ * - 否则返回原始 string
  */
-export function parseTagBlock(text: string, fields: FieldConfig[]): Record<string, string> {
-  const data: Record<string, string> = {};
-  const match = text.match(TAG_BLOCK_REGEX);
-
-  if (match && match[1]) {
-    const content = match[1];
-    const lines = content.split('\n');
-    
-    // Create Label -> Key mapping
-    const labelToKey: Record<string, string> = {};
-    fields.forEach(f => {
-        labelToKey[f.label] = f.key;
-    });
-
-    lines.forEach(line => {
-      // Line format: "🔹 Label: Value" or "🔸 Label: Value"
-      // Use alternation for emoji instead of character class (multi-byte issue)
-      const lineMatch = line.match(/(?:🔹|🔸)\s*(.*?):\s*(.*)/);
-      if (lineMatch) {
-        const label = lineMatch[1].trim();
-        // Value 可能包含多个 #tag，去掉每个标签开头的 #
-        const rawValue = lineMatch[2].trim();
-        const value = rawValue.split(/\s+/).map(v => v.replace(/^#/, '')).join(',');
-        
-        const key = labelToKey[label];
-        if (key) {
-          data[key] = value;
-        }
-      }
-    });
+export function parseValueSmart(value: string): string | string[] {
+  const trimmed = value.trim();
+  if (trimmed.includes('#')) {
+    // 按空格分割，去掉每个标签开头的 #
+    return trimmed.split(/\s+/).map(v => v.replace(/^#/, '')).filter(Boolean);
   }
-
-  return data;
-}
-
-/**
- * Removes the tag block from the text to get the original caption.
- * Also cleans up extra newlines around the removed block.
- */
-export function removeTagBlock(text: string): string {
-  // First remove the block, including surrounding newlines
-  const cleaned = text.replace(/\n*==============\n🏷️ Tags\n[\s\S]*?\n==============\n*/g, '\n');
-  return cleaned.trim();
-}
-
-/**
- * Generates a new tag block string based on form data and config.
- * - text: 直接输出文本
- * - select: 输出为 #tag 格式
- * - multi_select: 输出为 #tag1 #tag2 格式（多个标签用空格分隔）
- */
-export function generateTagBlock(data: Record<string, string>, fields: FieldConfig[]): string {
-    const tagLines: string[] = [];
-
-    for (const field of fields) {
-        const value = data[field.key];
-        if (value) {
-            let displayValue = value.trim();
-            
-            if (field.type === 'select' || field.type === 'multi_select') {
-                // select/multi_select: 格式化为 #tag 格式
-                // 先按逗号分隔（保留每个标签内的空格），然后规范化每个标签
-                const parts = displayValue.split(/,/).map(p => normalizeTagValue(p)).filter(Boolean);
-                displayValue = parts.map(p => p.startsWith('#') ? p : `#${p}`).join(' ');
-            }
-            // text 类型直接使用原始值
-
-            const marker = '🔸';
-            tagLines.push(`${marker} ${field.label}: ${displayValue}`);
-        }
-    }
-
-    if (tagLines.length === 0) return '';
-    
-    return `\n\n${TAG_BLOCK_START}\n\n${tagLines.join('\n')}\n${TAG_BLOCK_END}`;
+  return trimmed;
 }
 

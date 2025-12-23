@@ -212,17 +212,33 @@ ${TAG_BLOCK_FOOTER}`;
 
 /**
  * 解析 Tag Block 的正则表达式
+ * 兼容 🏷️ (带变体选择器) 和 🏷 (不带变体选择器)
+ * Telegram 手动编辑消息时可能会去掉变体选择器
  */
-export const NEO_TAG_BLOCK_REGEX = /┈┈┈ 🏷️ ┈┈┈\n([\s\S]*?)\n┈┈┈┈┈┈┈┈┈\n?/;
+export const NEO_TAG_BLOCK_REGEX = /┈┈┈ 🏷\uFE0F? ┈┈┈\n([\s\S]*?)\n┈┈┈┈┈┈┈┈┈\n?/;
+
+/**
+ * 智能解析 value：
+ * - 如果 value 包含 #，则解析为 string[]（去掉每个标签的 # 前缀）
+ * - 否则返回原始 string
+ */
+function parseValueSmart(value: string): string | string[] {
+  const trimmed = value.trim();
+  if (trimmed.includes('#')) {
+    return trimmed.split(/\s+/).map(v => v.replace(/^#/, '')).filter(Boolean);
+  }
+  return trimmed;
+}
 
 /**
  * 从文本中解析 Tag Block
+ * 根据 value 内容自动推断类型
  */
 export function parseNeoBrutalTagBlock(
   text: string,
   fields: { key: string; label: string }[]
-): Record<string, string> {
-  const data: Record<string, string> = {};
+): Record<string, string | string[]> {
+  const data: Record<string, string | string[]> = {};
   const match = text.match(NEO_TAG_BLOCK_REGEX);
 
   if (match && match[1]) {
@@ -239,11 +255,11 @@ export function parseNeoBrutalTagBlock(
       const lineMatch = line.match(/▸\s*(.+?):\s*(.*)/);
       if (lineMatch) {
         const label = lineMatch[1].trim();
-        const value = lineMatch[2].trim();
+        const rawValue = lineMatch[2].trim();
 
         const key = labelToKey[label];
         if (key) {
-          data[key] = value;
+          data[key] = parseValueSmart(rawValue);
         }
       }
     });
@@ -254,97 +270,30 @@ export function parseNeoBrutalTagBlock(
 
 /**
  * 移除 Tag Block
+ * 兼容 🏷️ (带变体选择器) 和 🏷 (不带变体选择器)
  */
 export function removeNeoBrutalTagBlock(text: string): string {
   const cleaned = text.replace(
-    /\n*┈┈┈ 🏷️ ┈┈┈\n[\s\S]*?\n┈┈┈┈┈┈┈┈┈\n*/g,
+    /\n*┈┈┈ 🏷\uFE0F? ┈┈┈\n[\s\S]*?\n┈┈┈┈┈┈┈┈┈\n*/g,
     '\n'
   );
   return cleaned.trim();
 }
 
-// ═══════════════════════════════════════════════════════
-// 🔧 LEGACY COMPATIBILITY
-// ═══════════════════════════════════════════════════════
-
-export const LEGACY_TAG_BLOCK_REGEX = /==============\n🏷️ Tags\n([\s\S]*?)\n==============\n?/;
-export const LEGACY_TAG_BLOCK_REGEX_V2 = /▀▀▀ 🏷️ TAGS ▀▀▀\n\n([\s\S]*?)\n\n▀▀▀▀▀▀▀▀▀▀▀▀▀▀\n?/;
-
 /**
- * 解析旧版 Tag Block（向后兼容）
- */
-export function parseLegacyTagBlock(
-  text: string,
-  fields: { key: string; label: string }[]
-): Record<string, string> {
-  const data: Record<string, string> = {};
-  
-  // 尝试旧版 V1
-  let match = text.match(LEGACY_TAG_BLOCK_REGEX);
-  let linePattern = /(?:🔹|🔸)\s*(.*?):\s*(.*)/;
-  
-  // 尝试旧版 V2
-  if (!match) {
-    match = text.match(LEGACY_TAG_BLOCK_REGEX_V2);
-    linePattern = /▸\s*\*\*(.+?):\*\*\s*(.*)/;
-  }
-
-  if (match && match[1]) {
-    const content = match[1];
-    const lines = content.split('\n');
-
-    const labelToKey: Record<string, string> = {};
-    fields.forEach((f) => {
-      labelToKey[f.label] = f.key;
-    });
-
-    lines.forEach((line) => {
-      const lineMatch = line.match(linePattern);
-      if (lineMatch) {
-        const label = lineMatch[1].trim();
-        const value = lineMatch[2].trim();
-        const key = labelToKey[label];
-        if (key) {
-          data[key] = value;
-        }
-      }
-    });
-  }
-
-  return data;
-}
-
-/**
- * 移除旧版 Tag Block
- */
-export function removeLegacyTagBlock(text: string): string {
-  let cleaned = text.replace(/\n*==============\n🏷️ Tags\n[\s\S]*?\n==============\n*/g, '\n');
-  cleaned = cleaned.replace(/\n*▀▀▀ 🏷️ TAGS ▀▀▀\n\n[\s\S]*?\n\n▀▀▀▀▀▀▀▀▀▀▀▀▀▀\n*/g, '\n');
-  return cleaned.trim();
-}
-
-/**
- * 智能解析 Tag Block（同时支持新旧格式）
+ * 解析 Tag Block
+ * 返回格式类似: {"title":"xxx","studio":"xxx","actors":[],"tags":["剧情","覆面"]}
  */
 export function parseTagBlockSmart(
   text: string,
   fields: { key: string; label: string }[]
-): Record<string, string> {
-  // 先尝试新格式
-  let result = parseNeoBrutalTagBlock(text, fields);
-  if (Object.keys(result).length > 0) {
-    return result;
-  }
-
-  // 再尝试旧格式
-  return parseLegacyTagBlock(text, fields);
+): Record<string, string | string[]> {
+  return parseNeoBrutalTagBlock(text, fields);
 }
 
 /**
- * 智能移除 Tag Block（同时支持新旧格式）
+ * 移除 Tag Block
  */
 export function removeTagBlockSmart(text: string): string {
-  let result = removeNeoBrutalTagBlock(text);
-  result = removeLegacyTagBlock(result);
-  return result;
+  return removeNeoBrutalTagBlock(text);
 }

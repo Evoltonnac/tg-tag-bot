@@ -94,7 +94,7 @@ describe('Tag Block', () => {
   });
 
   describe('parseNeoBrutalTagBlock', () => {
-    it('应该解析标签块', () => {
+    it('应该解析标签块（# 标签解析为数组）', () => {
       const text = `这是一段描述文字
 
 ┈┈┈ 🏷️ ┈┈┈
@@ -106,9 +106,9 @@ describe('Tag Block', () => {
       const result = parseNeoBrutalTagBlock(text, mockFields);
 
       expect(result).toEqual({
-        category: '#电影',
-        author: '张三',
-        genres: '#动作 #科幻',
+        category: ['电影'],           // 包含 # 解析为数组
+        author: '张三',               // 不包含 # 保持字符串
+        genres: ['动作', '科幻'],     // 包含 # 解析为数组
       });
     });
 
@@ -116,6 +116,23 @@ describe('Tag Block', () => {
       const text = '这是普通文本，没有标签块';
       const result = parseNeoBrutalTagBlock(text, mockFields);
       expect(result).toEqual({});
+    });
+
+    it('应该解析不带变体选择器的标签块（🏷）', () => {
+      // 模拟 Telegram 手动编辑后去掉变体选择器的情况
+      const text = `这是一段描述文字
+
+┈┈┈ 🏷 ┈┈┈
+▸ 分类: #电影
+▸ 作者: 张三
+┈┈┈┈┈┈┈┈┈`;
+
+      const result = parseNeoBrutalTagBlock(text, mockFields);
+
+      expect(result).toEqual({
+        category: ['电影'],
+        author: '张三',
+      });
     });
   });
 
@@ -130,11 +147,23 @@ describe('Tag Block', () => {
       const result = removeNeoBrutalTagBlock(text);
       expect(result).toBe('这是原始描述');
     });
+
+    it('应该移除不带变体选择器的标签块（🏷）', () => {
+      // 模拟 Telegram 手动编辑后去掉变体选择器的情况
+      const text = `这是原始描述
+
+┈┈┈ 🏷 ┈┈┈
+▸ 分类: #电影
+┈┈┈┈┈┈┈┈┈`;
+
+      const result = removeNeoBrutalTagBlock(text);
+      expect(result).toBe('这是原始描述');
+    });
   });
 });
 
 describe('Smart Tag Block 兼容性测试', () => {
-  it('parseTagBlockSmart 应该解析新格式', () => {
+  it('parseTagBlockSmart 应该解析新格式（# 标签解析为数组）', () => {
     const text = `描述
 
 ┈┈┈ 🏷️ ┈┈┈
@@ -142,54 +171,15 @@ describe('Smart Tag Block 兼容性测试', () => {
 ┈┈┈┈┈┈┈┈┈`;
 
     const result = parseTagBlockSmart(text, mockFields);
-    expect(result).toEqual({ category: '#电影' });
+    expect(result).toEqual({ category: ['电影'] });  // 包含 # 解析为数组
   });
 
-  it('parseTagBlockSmart 应该解析旧格式 V1', () => {
-    const text = `描述
-
-==============
-🏷️ Tags
-
-🔸 分类: #电影
-==============`;
-
-    const result = parseTagBlockSmart(text, mockFields);
-    expect(result).toEqual({ category: '#电影' });
-  });
-
-  it('parseTagBlockSmart 应该解析旧格式 V2', () => {
-    const text = `描述
-
-▀▀▀ 🏷️ TAGS ▀▀▀
-
-▸ **分类:** #电影
-
-▀▀▀▀▀▀▀▀▀▀▀▀▀▀`;
-
-    const result = parseTagBlockSmart(text, mockFields);
-    expect(result).toEqual({ category: '#电影' });
-  });
-
-  it('removeTagBlockSmart 应该移除新格式', () => {
+  it('removeTagBlockSmart 应该移除标签块', () => {
     const text = `原始内容
 
 ┈┈┈ 🏷️ ┈┈┈
 ▸ 分类: #电影
 ┈┈┈┈┈┈┈┈┈`;
-
-    const result = removeTagBlockSmart(text);
-    expect(result).toBe('原始内容');
-  });
-
-  it('removeTagBlockSmart 应该移除旧格式', () => {
-    const text = `原始内容
-
-==============
-🏷️ Tags
-
-🔸 分类: 电影
-==============`;
 
     const result = removeTagBlockSmart(text);
     expect(result).toBe('原始内容');
@@ -197,7 +187,7 @@ describe('Smart Tag Block 兼容性测试', () => {
 });
 
 describe('往返测试', () => {
-  it('生成后解析应该能还原数据', () => {
+  it('生成后解析应该能还原数据（# 标签解析为数组）', () => {
     const originalData = {
       category: '游戏',
       author: '李四',
@@ -208,9 +198,9 @@ describe('往返测试', () => {
     const parsedData = parseNeoBrutalTagBlock(generatedBlock, mockFields);
 
     expect(parsedData).toEqual({
-      category: '#游戏',
-      author: '李四',
-      genres: '#动作',
+      category: ['游戏'],    // 包含 # 解析为数组
+      author: '李四',        // text 类型保持字符串
+      genres: ['动作'],      // 包含 # 解析为数组
     });
   });
 
