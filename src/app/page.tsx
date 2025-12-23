@@ -1,6 +1,22 @@
 'use client';
 
 import { useState } from 'react';
+import { 
+  Link2, 
+  Zap, 
+  Smartphone, 
+  Tag, 
+  Settings, 
+  FileText, 
+  RefreshCw, 
+  Cloud, 
+  Palette, 
+  Bot, 
+  BookOpen, 
+  Github,
+  Sparkles,
+  ExternalLink
+} from 'lucide-react';
 
 // 快捷链接卡片组件
 function LinkCard({
@@ -14,7 +30,7 @@ function LinkCard({
   title: string;
   description: string;
   href: string;
-  icon: string;
+  icon: React.ReactNode;
   color?: string;
   external?: boolean;
 }) {
@@ -32,7 +48,7 @@ function LinkCard({
       `}
     >
       <div className="flex items-start gap-4">
-        <span className="text-3xl">{icon}</span>
+        <span className="shrink-0 text-neo-fg">{icon}</span>
         <div>
           <h3 className="font-black text-lg uppercase tracking-tight text-neo-fg">{title}</h3>
           <p className="mt-1 text-sm font-bold text-neo-fg-muted">{description}</p>
@@ -50,11 +66,11 @@ function FeatureCard({
 }: {
   title: string;
   description: string;
-  icon: string;
+  icon: React.ReactNode;
 }) {
   return (
     <div className="p-5 border-4 border-neo-border bg-neo-bg-alt shadow-[4px_4px_0px_0px_var(--color-neo-shadow)]">
-      <div className="w-12 h-12 flex items-center justify-center border-4 border-neo-border bg-neo-secondary font-black text-2xl mb-3 text-neo-fg">
+      <div className="w-12 h-12 flex items-center justify-center border-4 border-neo-border bg-neo-secondary mb-3 text-neo-fg">
         {icon}
       </div>
       <h3 className="font-black text-base uppercase tracking-tight text-neo-fg">{title}</h3>
@@ -158,7 +174,7 @@ function WebhookModal({
               active:translate-x-[2px] active:translate-y-[2px] active:shadow-none
               disabled:opacity-50"
           >
-            {status === 'loading' ? '请稍候...' : '🔗 设置 Webhook'}
+            {status === 'loading' ? '请稍候...' : <><Link2 className="inline w-5 h-5 mr-1" /> 设置 Webhook</>}
           </button>
         </div>
       </div>
@@ -202,7 +218,7 @@ export default function Home() {
                 hover:bg-neo-accent-hover transition-all duration-100
                 active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
             >
-              ⚡ 快速设置
+              <Zap className="inline w-5 h-5 mr-1" /> 快速设置
             </button>
             <a
               href={`https://t.me/${process.env.BOT_USERNAME || ''}`}
@@ -213,7 +229,7 @@ export default function Home() {
                 hover:bg-neo-muted transition-all duration-100
                 active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
             >
-              📱 私聊 Bot
+              <Smartphone className="inline w-5 h-5 mr-1" /> 私聊 Bot
             </a>
           </div>
         </div>
@@ -227,35 +243,100 @@ export default function Home() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           <FeatureCard
-            icon="🏷️"
+            icon={<Tag size={24} />}
             title="自动打标"
             description="频道发布消息后自动添加打标按钮，点击即可快速添加标签"
           />
           <FeatureCard
-            icon="⚙️"
+            icon={<Settings size={24} />}
             title="可视化配置"
             description="通过 Web App 界面配置字段类型、选项列表，无需手写 JSON"
           />
           <FeatureCard
-            icon="📝"
+            icon={<FileText size={24} />}
             title="多字段类型"
             description="支持文本、单选、多选等字段类型，满足各种分类需求"
           />
           <FeatureCard
-            icon="🔄"
+            icon={<RefreshCw size={24} />}
             title="转发打标"
             description="转发频道消息到私聊，直接在私聊中完成打标操作"
           />
           <FeatureCard
-            icon="☁️"
+            icon={<Cloud size={24} />}
             title="Serverless"
             description="基于 Vercel Edge Functions，无需服务器，开箱即用"
           />
           <FeatureCard
-            icon="🎨"
+            icon={<Palette size={24} />}
             title="保留原文"
             description="打标时保留原始 Caption，标签追加在末尾"
           />
+        </div>
+      </section>
+
+      {/* AI Capabilities Section */}
+      <section className="border-t-4 border-neo-border bg-neo-muted">
+        <div className="max-w-4xl mx-auto px-6 py-12">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-12 h-12 flex items-center justify-center border-4 border-neo-border bg-neo-secondary shadow-[4px_4px_0px_0px_var(--color-neo-shadow)]">
+              <Sparkles size={24} className="text-neo-fg" />
+            </div>
+            <h2 className="inline-block px-4 py-2 border-4 border-neo-border bg-neo-fg text-neo-bg font-black text-lg uppercase tracking-tight shadow-[4px_4px_0px_0px_var(--color-neo-accent)] -rotate-1">
+              AI 智能填充
+            </h2>
+          </div>
+
+          <div className="p-6 border-4 border-neo-border bg-neo-bg-alt shadow-[8px_8px_0px_0px_var(--color-neo-shadow)]">
+            <p className="text-base font-bold text-neo-fg leading-relaxed mb-4">
+              集成 <span className="bg-neo-secondary px-2 border-2 border-neo-border">Dify Agent</span> 能力，
+              支持从消息内容中自动提取关键信息，智能填充标签表单。
+            </p>
+            
+            <ul className="space-y-3 mb-6">
+              <li className="flex items-start gap-3">
+                <span className="shrink-0 w-6 h-6 flex items-center justify-center border-2 border-neo-border bg-neo-accent font-black text-sm text-neo-fg">✓</span>
+                <span className="font-bold text-neo-fg">基于 GPT 模型的智能表单填充</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="shrink-0 w-6 h-6 flex items-center justify-center border-2 border-neo-border bg-neo-accent font-black text-sm text-neo-fg">✓</span>
+                <span className="font-bold text-neo-fg">自动从文本/图片描述中提取分类信息</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="shrink-0 w-6 h-6 flex items-center justify-center border-2 border-neo-border bg-neo-accent font-black text-sm text-neo-fg">✓</span>
+                <span className="font-bold text-neo-fg">支持 Tavily 网络搜索增强识别</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="shrink-0 w-6 h-6 flex items-center justify-center border-2 border-neo-border bg-neo-accent font-black text-sm text-neo-fg">✓</span>
+                <span className="font-bold text-neo-fg">流式响应，实时显示处理进度</span>
+              </li>
+            </ul>
+
+            <div className="flex flex-wrap gap-3">
+              <a
+                href="https://dify.ai"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-3 border-4 border-neo-border bg-neo-secondary font-black text-sm uppercase text-neo-fg
+                  shadow-[4px_4px_0px_0px_var(--color-neo-shadow)]
+                  hover:bg-neo-secondary/80 transition-all duration-100
+                  active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
+              >
+                <ExternalLink size={16} /> Dify 官网
+              </a>
+              <a
+                href="https://github.com/evoltonnac/tg-tag-bot/tree/main/docs/tg-tag-bot-agent.yml"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-3 border-4 border-neo-border bg-neo-bg font-black text-sm uppercase text-neo-fg
+                  shadow-[4px_4px_0px_0px_var(--color-neo-shadow)]
+                  hover:bg-neo-bg-alt transition-all duration-100
+                  active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
+              >
+                <Github size={16} /> Agent DSL 文件
+              </a>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -275,7 +356,7 @@ export default function Home() {
               active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
           >
             <div className="flex items-start gap-4">
-              <span className="text-3xl">🔗</span>
+              <Link2 size={28} className="shrink-0 text-neo-fg" />
               <div>
                 <h3 className="font-black text-lg uppercase tracking-tight text-neo-fg">设置 Webhook</h3>
                 <p className="mt-1 text-sm font-bold text-neo-fg-muted">将当前域名注册为 Bot 的 Webhook</p>
@@ -284,7 +365,7 @@ export default function Home() {
           </div>
 
           <LinkCard
-            icon="🤖"
+            icon={<Bot size={28} />}
             title="Bot API"
             description="检查 Bot 运行状态"
             href="/api/bot"
@@ -292,7 +373,7 @@ export default function Home() {
           />
 
           <LinkCard
-            icon="📖"
+            icon={<BookOpen size={28} />}
             title="使用指南"
             description="完整的使用说明和 API 文档"
             href="https://core.telegram.org/bots/api"
@@ -301,7 +382,7 @@ export default function Home() {
           />
 
           <LinkCard
-            icon="💻"
+            icon={<Github size={28} />}
             title="GitHub"
             description="查看源代码和提交 Issue"
             href="https://github.com"

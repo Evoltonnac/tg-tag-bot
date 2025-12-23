@@ -3,6 +3,14 @@
 import { useEffect, useState, Suspense, useRef, KeyboardEvent } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ChatConfig, FieldConfig } from '@/lib/types';
+import { 
+  Sparkles, 
+  Check, 
+  Zap, 
+  RefreshCw,
+  ChevronUp,
+  ChevronDown
+} from 'lucide-react';
 
 declare global {
   interface Window {
@@ -109,15 +117,15 @@ function AiFillModal({
                             // 显示当前步骤
                             let stepText = '';
                             if (data.tool) {
-                                stepText = `🔧 调用工具: ${data.tool}`;
+                                stepText = `调用工具: ${data.tool}`;
                             } else if (data.thought) {
-                                stepText = `💭 ${data.thought.slice(0, 100)}${data.thought.length > 100 ? '...' : ''}`;
+                                stepText = `${data.thought.slice(0, 100)}${data.thought.length > 100 ? '...' : ''}`;
                             }
                             if (stepText) setCurrentStep(stepText);
                         } else if (data.type === 'done') {
                             if (data.data) {
                                 setResult(data.data);
-                                setCurrentStep('✓ 分析完成');
+                                setCurrentStep('分析完成');
                                 setStatus('done');
                                 streamDone = true; // 标记完成
                             } else {
@@ -153,7 +161,7 @@ function AiFillModal({
                 {/* Header with slide animation */}
                 <div className="flex justify-between items-center p-4 border-b-4 border-neo-border bg-neo-accent neo-animate-slide-in-left">
                     <h2 className="font-black text-xl uppercase text-neo-fg flex items-center gap-2">
-                        <span className="inline-block animate-pulse">✨</span> AI Auto-fill
+                        <Sparkles className="inline-block animate-pulse" size={20} /> AI Auto-fill
                     </h2>
                     <button 
                         onClick={onClose} 
@@ -202,7 +210,7 @@ function AiFillModal({
                                             onClick={() => setDescExpanded(!descExpanded)}
                                             className="text-neo-fg-muted text-xs font-bold mt-1 hover:text-neo-fg transition-colors block"
                                         >
-                                            {descExpanded ? '▲ 收起' : '▼ 展开'}
+                                            {descExpanded ? <><ChevronUp size={14} className="inline" /> 收起</> : <><ChevronDown size={14} className="inline" /> 展开</>}
                                         </button>
                                     )}
                                 </div>
@@ -229,7 +237,7 @@ function AiFillModal({
                          <div className="space-y-4 neo-animate-slide-up">
                             <div className="bg-neo-secondary p-4 border-4 border-neo-border neo-animate-bounce-shadow">
                                 <h3 className="font-black text-lg mb-2 text-neo-fg flex items-center gap-2">
-                                    <span className="inline-block text-neo-success">✓</span> 预览结果
+                                    <Check className="inline-block text-neo-success" size={20} /> 预览结果
                                 </h3>
                                 <pre className="text-xs font-mono overflow-auto max-h-[300px] bg-neo-bg p-2 border-2 border-neo-border whitespace-pre-wrap">
                                     {JSON.stringify(result, null, 2)}
@@ -252,7 +260,7 @@ function AiFillModal({
                                 hover:bg-neo-fg/90 hover:-translate-y-0.5 hover:shadow-[6px_6px_0px_0px_var(--color-neo-accent)]
                             `}
                         >
-                            {status === 'running' ? '生成中...' : status === 'error' ? '🔄 重试' : '⚡ 开始生成'}
+                            {status === 'running' ? '生成中...' : status === 'error' ? <><RefreshCw className="inline w-4 h-4 mr-1" /> 重试</> : <><Zap className="inline w-4 h-4 mr-1" /> 开始生成</>}
                         </button>
                     ) : (
                          <div className="flex gap-3">
@@ -260,13 +268,13 @@ function AiFillModal({
                                 onClick={() => { setStatus('idle'); setResult(null); setCurrentStep(''); }}
                                 className="flex-1 py-3 bg-neo-bg text-neo-fg font-black uppercase border-4 border-neo-border shadow-[4px_4px_0px_0px_var(--color-neo-shadow)] hover:bg-neo-secondary hover:-translate-y-0.5 hover:shadow-[6px_6px_0px_0px_var(--color-neo-shadow)] transition-all duration-150"
                             >
-                                🔄 重试
+                                <RefreshCw className="inline w-4 h-4 mr-1" /> 重试
                             </button>
                             <button 
                                 onClick={() => onApply(result as Record<string, string | string[]>)}
                                 className="flex-1 py-3 bg-neo-success text-neo-fg font-black uppercase border-4 border-neo-border shadow-[4px_4px_0px_0px_var(--color-neo-shadow)] hover:brightness-110 hover:-translate-y-0.5 hover:shadow-[6px_6px_0px_0px_var(--color-neo-shadow)] transition-all duration-150 neo-animate-bounce-shadow"
                             >
-                                ✓ 应用结果
+                                <Check className="inline w-4 h-4 mr-1" /> 应用结果
                             </button>
                          </div>
                     )}
@@ -887,8 +895,8 @@ function FormContent() {
   if (status === 'success') {
     return (
       <div className="flex items-center justify-center min-h-screen bg-neo-bg">
-        <div className="px-8 py-4 border-4 border-neo-border bg-neo-success shadow-[8px_8px_0px_0px_var(--color-neo-shadow)] font-black text-2xl uppercase text-neo-fg">
-          ✓ 成功！
+        <div className="px-8 py-4 border-4 border-neo-border bg-neo-success shadow-[8px_8px_0px_0px_var(--color-neo-shadow)] font-black text-2xl uppercase text-neo-fg flex items-center gap-2">
+          <Check size={24} /> 成功！
         </div>
       </div>
     );
@@ -914,7 +922,7 @@ function FormContent() {
                 onClick={() => setIsAiOpen(true)}
                 className="neo-animate-pop-in neo-animate-pulse-ring group px-3 py-2 border-4 border-neo-border bg-neo-accent font-black text-sm uppercase text-neo-fg shadow-[3px_3px_0px_0px_var(--color-neo-shadow)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all duration-150 hover:brightness-110 hover:-translate-y-0.5 hover:shadow-[5px_5px_0px_0px_var(--color-neo-shadow)]"
              >
-                <span className="inline-block group-hover:animate-pulse">✨</span> AI Auto-fill
+                <Sparkles className="inline-block group-hover:animate-pulse" size={16} /> AI Auto-fill
              </button>
         )}
       </div>
@@ -996,7 +1004,7 @@ function FormContent() {
                 transition-all duration-100
                 disabled:opacity-50"
             >
-              {status === 'submitting' ? '提交中...' : '✓ 完成提交'}
+              {status === 'submitting' ? '提交中...' : <><Check className="inline w-4 h-4 mr-1" /> 完成提交</>}
             </button>
           )}
         </div>

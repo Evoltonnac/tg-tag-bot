@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense, useRef, KeyboardEvent } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ChatConfig, FieldConfig, AiConfig } from '@/lib/types';
+import { Trash2, Sparkles, Check, Save } from 'lucide-react';
 
 declare global {
   interface Window {
@@ -308,9 +309,9 @@ function FieldCard({
               className="px-4 py-2 border-4 border-neo-border bg-neo-bg-alt font-bold text-sm uppercase text-neo-accent
                 shadow-[2px_2px_0px_0px_var(--color-neo-shadow)]
                 hover:bg-neo-accent hover:text-neo-fg transition-all duration-100
-                active:translate-x-px active:translate-y-px active:shadow-none"
+                active:translate-x-px active:translate-y-px active:shadow-none flex items-center gap-1"
             >
-              🗑 删除此字段
+              <Trash2 size={16} /> 删除此字段
             </button>
           </div>
         </div>
@@ -336,7 +337,7 @@ function AiConfigEditor({
         className="flex items-center justify-between p-4 bg-neo-accent border-b-4 border-neo-border cursor-pointer hover:bg-neo-accent-hover transition-colors"
       >
         <div className="flex items-center gap-3">
-          <span className="text-2xl">✨</span>
+          <Sparkles size={24} className="text-neo-fg" />
           <h3 className="font-black text-lg uppercase tracking-tight text-neo-fg">AI 助手配置</h3>
         </div>
         <div className="flex items-center gap-2">
@@ -519,8 +520,8 @@ function ConfigEditor() {
   if (saveSuccess) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-neo-bg">
-        <div className="px-8 py-4 border-4 border-neo-border bg-neo-success shadow-[8px_8px_0px_0px_var(--color-neo-shadow)] font-black text-2xl uppercase text-neo-fg">
-          ✓ 已保存！
+        <div className="px-8 py-4 border-4 border-neo-border bg-neo-success shadow-[8px_8px_0px_0px_var(--color-neo-shadow)] font-black text-2xl uppercase text-neo-fg flex items-center gap-2">
+          <Check size={24} /> 已保存！
         </div>
       </div>
     );
@@ -580,7 +581,7 @@ function ConfigEditor() {
               active:translate-x-[3px] active:translate-y-[3px] active:shadow-none
               disabled:opacity-50"
           >
-            {saving ? '保存中...' : '💾 保存配置'}
+            {saving ? '保存中...' : <><Save className="inline w-5 h-5 mr-1" /> 保存配置</>}
           </button>
         </div>
       </div>
