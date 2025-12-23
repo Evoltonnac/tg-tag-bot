@@ -1,5 +1,12 @@
 import { FieldConfig } from './types';
 
+/**
+ * 规范化标签值：将空格转换为下划线，确保 hashtag 不会断开
+ */
+export function normalizeTagValue(value: string): string {
+  return value.trim().replace(/\s+/g, '_');
+}
+
 export const TAG_BLOCK_START = '==============\n🏷️ Tags';
 export const TAG_BLOCK_END = '==============';
 
@@ -74,7 +81,8 @@ export function generateTagBlock(data: Record<string, string>, fields: FieldConf
             
             if (field.type === 'select' || field.type === 'multi_select') {
                 // select/multi_select: 格式化为 #tag 格式
-                const parts = displayValue.split(/[\s,]+/).filter(Boolean);
+                // 先按逗号分隔（保留每个标签内的空格），然后规范化每个标签
+                const parts = displayValue.split(/,/).map(p => normalizeTagValue(p)).filter(Boolean);
                 displayValue = parts.map(p => p.startsWith('#') ? p : `#${p}`).join(' ');
             }
             // text 类型直接使用原始值

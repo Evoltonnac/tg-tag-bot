@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense, useRef, KeyboardEvent } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ChatConfig, FieldConfig } from '@/lib/types';
+import { normalizeTagValue } from '@/lib/tag-utils';
 import { 
   Sparkles, 
   Check, 
@@ -395,9 +396,9 @@ function AddNewTagInput({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleAdd = () => {
-    const trimmed = inputValue.trim();
-    if (trimmed) {
-      onAdd(trimmed);
+    const normalized = normalizeTagValue(inputValue);
+    if (normalized) {
+      onAdd(normalized);
       setInputValue('');
     }
   };
@@ -450,9 +451,9 @@ function EditCustomOptionModalInner({
   const [editValue, setEditValue] = useState(currentValue);
 
   const handleSave = () => {
-    const trimmed = editValue.trim();
-    if (trimmed && trimmed !== currentValue) {
-      onSave(trimmed);
+    const normalized = normalizeTagValue(editValue);
+    if (normalized && normalized !== currentValue) {
+      onSave(normalized);
     }
     onClose();
   };
@@ -743,22 +744,48 @@ function FormContent() {
 
   const handleAiApply = (data: any) => {
     const newFormData = { ...formData };
+    const newCustomOptions = { ...customOptions };
     
     if (config) {
         config.fields.forEach(field => {
             if (data[field.key]) {
                 const val = data[field.key];
+                
                 if (field.type === 'multi_select') {
-                    // Ensure unique values and proper array
-                    const currentArr = Array.isArray(newFormData[field.key]) ? newFormData[field.key] as string[] : [];
-                    const newArr = Array.isArray(val) ? val : [val];
-                    // We can either replace or merge. Let's replace as it's "Auto-fill" but maybe user wants merge?
-                    // User prompt implies "filling", usually replacement or smart merge.
-                    // Given the UI allows review, replacement seems cleaner for the specific field, 
-                    // but we should probably keep existing tags if they aren't in the new list? 
-                    // Actually, simple replacement is less confusing.
+                    // 规范化每个值：将空格转换为下划线
+                    const rawArr = Array.isArray(val) ? val : [val];
+                    const newArr = rawArr.map((v: string) => normalizeTagValue(String(v))).filter(Boolean);
                     newFormData[field.key] = newArr;
+                    
+                    // 检查每个值是否需要添加到自定义选项
+                    const existingOptions = field.options || [];
+                    const existingCustom = newCustomOptions[field.key] || [];
+                    const toAdd: string[] = [];
+                    
+                    newArr.forEach((v: string) => {
+                        if (!existingOptions.includes(v) && !existingCustom.includes(v)) {
+                            toAdd.push(v);
+                        }
+                    });
+                    
+                    if (toAdd.length > 0) {
+                        newCustomOptions[field.key] = [...existingCustom, ...toAdd];
+                    }
+                } else if (field.type === 'select') {
+                    // 规范化值：将空格转换为下划线
+                    const rawVal = Array.isArray(val) ? val.join(', ') : String(val);
+                    const strVal = normalizeTagValue(rawVal);
+                    newFormData[field.key] = strVal;
+                    
+                    // 检查值是否需要添加到自定义选项
+                    const existingOptions = field.options || [];
+                    const existingCustom = newCustomOptions[field.key] || [];
+                    
+                    if (strVal && !existingOptions.includes(strVal) && !existingCustom.includes(strVal)) {
+                        newCustomOptions[field.key] = [...existingCustom, strVal];
+                    }
                 } else {
+                    // text 类型保持原样，不需要规范化
                     newFormData[field.key] = Array.isArray(val) ? val.join(', ') : String(val);
                 }
             }
@@ -766,6 +793,7 @@ function FormContent() {
     }
     
     setFormData(newFormData);
+    setCustomOptions(newCustomOptions);
     setIsAiOpen(false);
   };
 
