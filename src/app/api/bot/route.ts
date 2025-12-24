@@ -4,6 +4,7 @@ import { ChatConfig } from '@/lib/types';
 import { 
   parseTagBlockSmart, 
   removeTagBlockSmart,
+  NEO_TAG_BLOCK_REGEX,
   MSG_WELCOME,
   MSG_CONFIG_PROMPT,
   msgConfigEntry,
@@ -428,6 +429,13 @@ bot.on(['channel_post:photo', 'channel_post:video', 'channel_post:document', 'ch
 
   const config = await kv.get<ChatConfig>(`config:${chat.id}`);
   if (!config) return;
+
+  // 检查消息是否已经包含 tag block
+  const textContent = ctx.msg.caption || ctx.msg.text || '';
+  if (textContent && NEO_TAG_BLOCK_REGEX.test(textContent)) {
+    // 如果已经包含 tag block，不再添加按钮
+    return;
+  }
 
   // 构建 deep link
   const botUsername = ctx.me.username;
