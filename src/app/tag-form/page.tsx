@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, Suspense, useRef, KeyboardEvent } from 'react';
+import { useEffect, useState, Suspense, useRef, KeyboardEvent, ReactElement } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ChatConfig, FieldConfig } from '@/lib/types';
 import { normalizeTagValue } from '@/lib/tag-utils';
@@ -10,7 +10,11 @@ import {
   Zap, 
   RefreshCw,
   ChevronUp,
-  ChevronDown
+  ChevronDown,
+  Code,
+  Wrench,
+  Brain,
+  Loader2
 } from 'lucide-react';
 
 declare global {
@@ -34,6 +38,50 @@ declare global {
   }
 }
 
+// JSON预览组件，支持URL链接
+function JsonPreview({ data }: { data: Record<string, unknown> }) {
+  const jsonString = JSON.stringify(data, null, 2);
+  
+  // URL正则表达式：匹配 http:// 或 https:// 开头的URL
+  const urlRegex = /(https?:\/\/[^\s"'<>{}[\]\\]+)/g;
+  
+  const parts: (string | ReactElement)[] = [];
+  let lastIndex = 0;
+  let match;
+  let keyIndex = 0;
+  
+  while ((match = urlRegex.exec(jsonString)) !== null) {
+    // 添加URL之前的文本
+    if (match.index > lastIndex) {
+      parts.push(jsonString.slice(lastIndex, match.index));
+    }
+    
+    // 添加可点击的URL链接
+    const url = match[0];
+    parts.push(
+      <a
+        key={`url-${keyIndex++}`}
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-neo-accent underline hover:text-neo-accent/80 transition-colors cursor-pointer"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {url}
+      </a>
+    );
+    
+    lastIndex = match.index + match[0].length;
+  }
+  
+  // 添加剩余的文本
+  if (lastIndex < jsonString.length) {
+    parts.push(jsonString.slice(lastIndex));
+  }
+  
+  return <>{parts.length > 0 ? parts : jsonString}</>;
+}
+
 // AI Fill Modal
 function AiFillModal({
   isOpen,
@@ -53,9 +101,47 @@ function AiFillModal({
     const [userQuery, setUserQuery] = useState('');
     const [status, setStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
     const [currentStep, setCurrentStep] = useState('');
+    const [workflowStep, setWorkflowStep] = useState<{ title: string; iconUrl?: string; nodeType?: string } | null>(null);
+    const [iconLoadError, setIconLoadError] = useState(false);
     const [result, setResult] = useState<Record<string, unknown> | null>(null);
     const [errorMsg, setErrorMsg] = useState('');
     const [descExpanded, setDescExpanded] = useState(false);
+
+    // 获取 lucide 默认图标
+    const getLucideIcon = (nodeType: string): React.ReactNode => {
+        const iconSize = 16;
+        switch (nodeType) {
+            case 'code':
+                return <Code size={iconSize} />;
+            case 'tool':
+                return <Wrench size={iconSize} />;
+            case 'llm':
+                return <Brain size={iconSize} />;
+            default:
+                return <Loader2 size={iconSize} className="animate-spin" />;
+        }
+    };
+    
+    // 渲染图标组件
+    const renderIcon = (iconUrl?: string, nodeType?: string): React.ReactNode => {
+        const iconSize = 16;
+        
+        // 如果有图标 URL 且没有加载错误，使用返回的图标
+        if (iconUrl && iconUrl.trim() && !iconLoadError) {
+            return (
+                <img 
+                    src={iconUrl} 
+                    alt="" 
+                    className="w-4 h-4 object-contain"
+                    style={{ width: iconSize, height: iconSize }}
+                    onError={() => setIconLoadError(true)}
+                />
+            );
+        }
+        
+        // 否则根据 node_type 返回对应的 lucide 图标
+        return getLucideIcon(nodeType || '');
+    };
 
     // Reset when opened
     useEffect(() => {
@@ -63,6 +149,8 @@ function AiFillModal({
             setUserQuery('');
             setStatus('idle');
             setCurrentStep('');
+            setWorkflowStep(null);
+            setIconLoadError(false);
             setResult(null);
             setErrorMsg('');
             setDescExpanded(false);
@@ -112,19 +200,32 @@ function AiFillModal({
                     try {
                         const data = JSON.parse(line.slice(6));
                         
-                        if (data.type === 'thought') {
-                            // 显示当前步骤
+                        if (data.type === 'workflow_step') {
+                            // 处理 workflow 步骤
+                            setIconLoadError(false); // 重置错误状态
+                            setWorkflowStep({
+                                title: data.title || '处理中...',
+                                iconUrl: data.icon,
+                                nodeType: data.node_type || ''
+                            });
+                            setCurrentStep('');
+                        } else if (data.type === 'thought') {
+                            // 显示当前步骤（Agent 模式）
                             let stepText = '';
                             if (data.tool) {
                                 stepText = `调用工具: ${data.tool}`;
                             } else if (data.thought) {
                                 stepText = `${data.thought.slice(0, 100)}${data.thought.length > 100 ? '...' : ''}`;
                             }
-                            if (stepText) setCurrentStep(stepText);
+                            if (stepText) {
+                                setCurrentStep(stepText);
+                                setWorkflowStep(null); // 清除 workflow 步骤
+                            }
                         } else if (data.type === 'done') {
                             if (data.data) {
                                 setResult(data.data);
                                 setCurrentStep('分析完成');
+                                setWorkflowStep(null);
                                 setStatus('done');
                                 streamDone = true; // 标记完成
                             } else {
@@ -189,7 +290,14 @@ function AiFillModal({
                                         </span>
                                     </span>
                                 </div>
-                                {currentStep && (
+                                {workflowStep ? (
+                                    <div className="mt-3 p-3 bg-neo-bg border-2 border-neo-border font-mono text-sm text-neo-fg neo-animate-slide-in-left flex items-center gap-2">
+                                        <span className="text-neo-accent shrink-0">
+                                            {renderIcon(workflowStep.iconUrl, workflowStep.nodeType)}
+                                        </span>
+                                        <span className="font-bold">{workflowStep.title}</span>
+                                    </div>
+                                ) : currentStep && (
                                     <div className="mt-3 p-3 bg-neo-bg border-2 border-neo-border font-mono text-sm text-neo-fg-muted neo-animate-slide-in-left">
                                         {currentStep}
                                     </div>
@@ -239,7 +347,7 @@ function AiFillModal({
                                     <Check className="inline-block text-neo-success" size={20} /> 预览结果
                                 </h3>
                                 <pre className="text-xs font-mono overflow-auto max-h-[300px] bg-neo-bg p-2 border-2 border-neo-border whitespace-pre-wrap">
-                                    {JSON.stringify(result, null, 2)}
+                                    <JsonPreview data={result} />
                                 </pre>
                             </div>
                          </div>

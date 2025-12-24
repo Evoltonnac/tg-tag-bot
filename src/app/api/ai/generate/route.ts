@@ -91,10 +91,30 @@ export async function POST(req: NextRequest) {
                 try {
                     const data = JSON.parse(line.slice(6));
                     const event = data.event;
-                    
-                    // 转发步骤信息给前端
-                    if (event === 'agent_thought') {
-                        // Agent 思考步骤
+
+                    // --- 新增：Chatflow 节点步骤解析 ---
+                    if (event === 'node_started') {
+                        const nodeData = data.data;
+                        const targetTypes = ['code', 'tool', 'llm']; // 只关注这三种类型
+
+                        if (nodeData && targetTypes.includes(nodeData.node_type)) {
+                            // 提取步骤信息
+                            const step = {
+                                type: 'workflow_step',        // 前端通过这个 type 识别并在 UI 上展示"正在执行..."
+                                node_type: nodeData.node_type,
+                                title: nodeData.title,        // 节点名称
+                                // 尝试获取图标，Dify 有时放在 extras 里，有时没有，建议前端根据 node_type 只有默认图标兜底
+                                icon: nodeData.extras?.icon || nodeData.icon || '' 
+                            };
+                            
+                            // 推送给前端
+                            controller.enqueue(encoder.encode(`data: ${JSON.stringify(step)}\n\n`));
+                        }
+                    }
+
+                    // --- 原有逻辑兼容调整 ---
+                    else if (event === 'agent_thought') {
+                        // Agent 模式的思考
                         const step = {
                             type: 'thought',
                             thought: data.thought || '',
@@ -102,17 +122,23 @@ export async function POST(req: NextRequest) {
                             tool_input: data.tool_input || ''
                         };
                         controller.enqueue(encoder.encode(`data: ${JSON.stringify(step)}\n\n`));
-                    } else if (event === 'agent_message') {
-                        // Agent 最终回答（增量）
+                    } 
+                    else if (event === 'agent_message') {
                         fullAnswer += data.answer || '';
-                    } else if (event === 'message') {
-                        // 普通消息（非 Agent）
+                    } 
+                    else if (event === 'message') {
                         fullAnswer += data.answer || '';
-                    } else if (event === 'message_end') {
-                        // 消息结束，解析 JSON 并返回
+                    } 
+                    // 【关键补充】Chatflow 模式下，文本经常通过 text_chunk 返回，不加这个可能拿不到回答
+                    else if (event === 'text_chunk') {
+                        fullAnswer += data.data.text || '';
+                    }
+                    else if (event === 'message_end' || event === 'workflow_finished') {
+                        // 兼容 workflow_finished 作为结束标志
                         const result = parseJsonFromAnswer(fullAnswer);
                         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done', data: result, raw: fullAnswer })}\n\n`));
-                    } else if (event === 'error') {
+                    } 
+                    else if (event === 'error') {
                         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', error: data.message || 'Unknown error' })}\n\n`));
                     }
                 } catch {
