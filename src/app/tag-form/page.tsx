@@ -163,7 +163,21 @@ function AiFillModal({
         setResult(null);
         setErrorMsg('');
 
+        // 设置超时时间（5 分钟，足够长以处理长时间运行的请求）
+        const TIMEOUT_MS = 5 * 60 * 1000;
+        let timeoutId: ReturnType<typeof setTimeout> | null = null;
+        let lastDataTime = Date.now();
+
         try {
+            const controller = new AbortController();
+            
+            // 设置超时
+            timeoutId = setTimeout(() => {
+                controller.abort();
+                setStatus('error');
+                setErrorMsg('请求超时，请稍后重试。如果问题持续，可能是 AI 处理时间过长。');
+            }, TIMEOUT_MS);
+
             const res = await fetch('/api/ai/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -171,11 +185,12 @@ function AiFillModal({
                     chatId,
                     query: userQuery,
                     rawData: rawText
-                })
+                }),
+                signal: controller.signal
             });
 
             if (!res.ok) {
-                const errData = await res.json();
+                const errData = await res.json().catch(() => ({ error: '请求失败' }));
                 throw new Error(errData.error || 'AI 请求失败');
             }
 
@@ -191,11 +206,20 @@ function AiFillModal({
                 const { done, value } = await reader.read();
                 if (done) break;
 
+                // 更新最后接收数据的时间
+                lastDataTime = Date.now();
+                
                 buffer += decoder.decode(value, { stream: true });
                 const lines = buffer.split('\n\n');
                 buffer = lines.pop() || '';
 
                 for (const line of lines) {
+                    // 处理注释行（心跳）- 忽略但更新活动时间
+                    if (line.startsWith(':')) {
+                        lastDataTime = Date.now();
+                        continue;
+                    }
+                    
                     if (!line.startsWith('data: ')) continue;
                     try {
                         const data = JSON.parse(line.slice(6));
@@ -222,6 +246,10 @@ function AiFillModal({
                                 setWorkflowStep(null); // 清除 workflow 步骤
                             }
                         } else if (data.type === 'done') {
+                            if (timeoutId) {
+                                clearTimeout(timeoutId);
+                                timeoutId = null;
+                            }
                             if (data.data) {
                                 setResult(data.data);
                                 setCurrentStep('分析完成');
@@ -232,24 +260,46 @@ function AiFillModal({
                                 throw new Error('AI 返回数据解析失败: ' + (data.raw || '').slice(0, 200));
                             }
                         } else if (data.type === 'error') {
+                            if (timeoutId) {
+                                clearTimeout(timeoutId);
+                                timeoutId = null;
+                            }
                             throw new Error(data.error || 'AI 处理出错');
                         }
                     } catch (e) {
                         if (e instanceof SyntaxError) continue; // JSON 解析错误忽略
+                        if (timeoutId) {
+                            clearTimeout(timeoutId);
+                            timeoutId = null;
+                        }
                         throw e;
                     }
                 }
             }
 
+            // 清理超时
+            if (timeoutId) {
+                clearTimeout(timeoutId);
+                timeoutId = null;
+            }
+
             // 如果循环结束还没有 done，可能是流被截断
             if (!streamDone) {
                 setStatus('error');
-                setErrorMsg('AI 响应不完整');
+                setErrorMsg('AI 响应不完整，可能因为处理时间过长。请检查后端日志确认是否成功。');
             }
 
         } catch (e: unknown) {
+            if (timeoutId) {
+                clearTimeout(timeoutId);
+                timeoutId = null;
+            }
             setStatus('error');
-            setErrorMsg(e instanceof Error ? e.message : String(e));
+            if (e instanceof Error && e.name === 'AbortError') {
+                setErrorMsg('请求超时。AI 处理可能需要较长时间，请稍后重试。');
+            } else {
+                setErrorMsg(e instanceof Error ? e.message : String(e));
+            }
         }
     };
 

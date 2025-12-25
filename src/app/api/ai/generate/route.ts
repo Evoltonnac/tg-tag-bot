@@ -4,9 +4,13 @@ import { ChatConfig } from '@/lib/types';
 import { mockSseData, MOCK_SSE_DELAY } from '@/lib/mock-sse-data';
 
 export const runtime = 'edge';
+// Edge Runtime 最大执行时间限制（Vercel Pro: 60s, Enterprise: 更长）
+// 对于长时间运行的请求，需要添加心跳机制保持连接
+export const maxDuration = 300; // 5 分钟（如果平台支持）
 
 // 通过环境变量或请求参数启用 mock 模式
 const MOCK_SSE_ENABLED = process.env.MOCK_SSE === 'true';
+
 
 export async function POST(req: NextRequest) {
     const { chatId, query, rawData, mock } = await req.json();
@@ -72,12 +76,13 @@ export async function POST(req: NextRequest) {
         });
     }
 
-    // 创建 TransformStream 转发 SSE 给前端
+    // 创建 TransformStream 转发 SSE 给前端，并添加心跳机制
     const encoder = new TextEncoder();
     const decoder = new TextDecoder();
     
     let fullAnswer = '';
     let buffer = '';
+    let isFinished = false;
     
     const transformStream = new TransformStream({
         async transform(chunk, controller) {
@@ -86,6 +91,12 @@ export async function POST(req: NextRequest) {
             buffer = lines.pop() || ''; // 保留不完整的最后一行
             
             for (const line of lines) {
+                // 处理注释行（心跳）- 直接转发，保持连接活跃
+                if (line.startsWith(':')) {
+                    controller.enqueue(encoder.encode(line + '\n\n'));
+                    continue;
+                }
+                
                 if (!line.startsWith('data: ')) continue;
                 
                 try {
@@ -135,10 +146,12 @@ export async function POST(req: NextRequest) {
                     }
                     else if (event === 'message_end' || event === 'workflow_finished') {
                         // 兼容 workflow_finished 作为结束标志
+                        isFinished = true;
                         const result = parseJsonFromAnswer(fullAnswer);
                         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done', data: result, raw: fullAnswer })}\n\n`));
                     } 
                     else if (event === 'error') {
+                        isFinished = true;
                         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', error: data.message || 'Unknown error' })}\n\n`));
                     }
                 } catch {
@@ -160,18 +173,23 @@ export async function POST(req: NextRequest) {
                 }
             }
             // 如果没收到 message_end，也尝试解析
-            if (fullAnswer && !buffer.includes('message_end')) {
+            if (fullAnswer && !buffer.includes('message_end') && !isFinished) {
                 const result = parseJsonFromAnswer(fullAnswer);
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done', data: result, raw: fullAnswer })}\n\n`));
             }
         }
     });
 
+    // 直接返回 transform 后的流
+    // 注意：Edge Runtime 有超时限制（通常 60 秒），对于长时间运行的请求可能需要切换到 Node.js runtime
+    // Dify 的 SSE 流应该会定期发送数据或心跳，保持连接活跃
     return new Response(response.body?.pipeThrough(transformStream), {
         headers: {
             'Content-Type': 'text/event-stream',
             'Cache-Control': 'no-cache',
             'Connection': 'keep-alive',
+            // 添加 X-Accel-Buffering: no 防止代理缓冲
+            'X-Accel-Buffering': 'no',
         },
     });
 }
