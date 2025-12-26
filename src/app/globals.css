@@ -290,3 +290,17 @@ textarea {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* 像素方块扫光动画 */
+@keyframes scan {
+  0% {
+    transform: translateX(-100%) skewX(-45deg);
+  }
+  100% {
+    transform: translateX(200%) skewX(-45deg);
+  }
+}
+
+.animate-scan {
+  animation: scan 1.5s ease-in-out infinite;
+}

@@ -85,11 +85,12 @@ function JsonPreview({ data }: { data: Record<string, unknown> }) {
 // AI Fill Modal
 function AiFillModal({
   isOpen,
-  onClose,
+  onClose, // eslint-disable-line @typescript-eslint/no-unused-vars
   onApply,
   config,
   rawText,
-  chatId
+  chatId,
+  onStatusChange
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -97,6 +98,7 @@ function AiFillModal({
   config: ChatConfig;
   rawText: string;
   chatId: string;
+  onStatusChange?: (status: 'idle' | 'running' | 'done' | 'error') => void;
 }) {
     const [userQuery, setUserQuery] = useState('');
     const [status, setStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
@@ -143,25 +145,46 @@ function AiFillModal({
         return getLucideIcon(nodeType || '');
     };
 
-    // Reset when opened
+    // 同步状态到父组件
     useEffect(() => {
-        if (isOpen) {
-            setUserQuery('');
-            setStatus('idle');
-            setCurrentStep('');
-            setWorkflowStep(null);
-            setIconLoadError(false);
-            setResult(null);
-            setErrorMsg('');
-            setDescExpanded(false);
+        if (onStatusChange) {
+            onStatusChange(status);
         }
-    }, [isOpen, config]);
+    }, [status, onStatusChange]);
+
+    const controllerRef = useRef<AbortController | null>(null);
+    const taskIdRef = useRef<string | null>(null);
+
+    const handleStop = async () => {
+        // 并行调用停止API和中断fetch请求
+        const stopApiPromise = taskIdRef.current && chatId
+            ? fetch('/api/ai/stop', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chatId,
+                    taskId: taskIdRef.current
+                })
+            }).catch(error => {
+                console.error('Failed to stop Dify request:', error);
+            })
+            : Promise.resolve();
+        
+        // 立即中断fetch请求（同步操作）
+        if (controllerRef.current) {
+            controllerRef.current.abort();
+        }
+        
+        // 等待停止API调用完成（但不阻塞abort操作）
+        await stopApiPromise;
+    };
 
     const handleRun = async () => {
         setStatus('running');
         setCurrentStep('正在连接 AI...');
         setResult(null);
         setErrorMsg('');
+        taskIdRef.current = null; // 重置task_id
 
         // 设置超时时间（5 分钟，足够长以处理长时间运行的请求）
         const TIMEOUT_MS = 5 * 60 * 1000;
@@ -170,6 +193,7 @@ function AiFillModal({
 
         try {
             const controller = new AbortController();
+            controllerRef.current = controller;
             
             // 设置超时
             timeoutId = setTimeout(() => {
@@ -223,6 +247,11 @@ function AiFillModal({
                     if (!line.startsWith('data: ')) continue;
                     try {
                         const data = JSON.parse(line.slice(6));
+                        
+                        // 捕获task_id用于停止功能
+                        if (data.type === 'task_id' && data.task_id) {
+                            taskIdRef.current = data.task_id;
+                        }
                         
                         if (data.type === 'workflow_step') {
                             // 处理 workflow 步骤
@@ -296,10 +325,13 @@ function AiFillModal({
             }
             setStatus('error');
             if (e instanceof Error && e.name === 'AbortError') {
-                setErrorMsg('请求超时。AI 处理可能需要较长时间，请稍后重试。');
+                setErrorMsg('请求已停止。AI 处理已被用户中断。');
             } else {
                 setErrorMsg(e instanceof Error ? e.message : String(e));
             }
+        } finally {
+            controllerRef.current = null;
+            // 注意：不在这里清理taskIdRef，因为停止时需要它
         }
     };
 
@@ -316,8 +348,9 @@ function AiFillModal({
                     <button 
                         onClick={onClose} 
                         className="font-black text-xl w-8 h-8 flex items-center justify-center border-2 border-neo-border bg-neo-bg-alt hover:bg-neo-fg hover:text-neo-bg transition-all duration-150 hover:rotate-90"
+                        title="最小化"
                     >
-                        ×
+                        −
                     </button>
                 </div>
                 
@@ -406,19 +439,33 @@ function AiFillModal({
 
                 <div className="p-4 border-t-4 border-neo-border bg-neo-bg-alt">
                     {status !== 'done' ? (
-                        <button 
-                            onClick={handleRun}
-                            disabled={status === 'running'}
-                            className={`
-                                w-full py-3 bg-neo-fg text-neo-bg font-black uppercase text-lg border-4 border-neo-border 
-                                shadow-[4px_4px_0px_0px_var(--color-neo-accent)] 
-                                active:translate-x-[2px] active:translate-y-[2px] active:shadow-none 
-                                disabled:opacity-50 transition-all duration-150 
-                                hover:bg-neo-fg/90 hover:-translate-y-0.5 hover:shadow-[6px_6px_0px_0px_var(--color-neo-accent)]
-                            `}
-                        >
-                            {status === 'running' ? '生成中...' : status === 'error' ? <><RefreshCw className="inline w-4 h-4 mr-1" /> 重试</> : <><Zap className="inline w-4 h-4 mr-1" /> 开始生成</>}
-                        </button>
+                        <div className="flex gap-3">
+                            {status === 'running' ? (
+                                <button 
+                                    onClick={handleStop}
+                                    className="flex-1 py-3 bg-neo-accent text-neo-fg font-black uppercase border-4 border-neo-border 
+                                        shadow-[4px_4px_0px_0px_var(--color-neo-shadow)] 
+                                        active:translate-x-[2px] active:translate-y-[2px] active:shadow-none 
+                                        transition-all duration-150 hover:brightness-110 hover:-translate-y-0.5 hover:shadow-[6px_6px_0px_0px_var(--color-neo-shadow)]"
+                                >
+                                    <span className="flex items-center justify-center gap-1">
+                                        <span className="w-3 h-3 bg-neo-fg rounded-full"></span>
+                                        停止生成
+                                    </span>
+                                </button>
+                            ) : (
+                                <button 
+                                    onClick={handleRun}
+                                    className={`flex-1 py-3 bg-neo-fg text-neo-bg font-black uppercase text-lg border-4 border-neo-border 
+                                        shadow-[4px_4px_0px_0px_var(--color-neo-accent)] 
+                                        active:translate-x-[2px] active:translate-y-[2px] active:shadow-none 
+                                        transition-all duration-150 
+                                        hover:bg-neo-fg/90 hover:-translate-y-0.5 hover:shadow-[6px_6px_0px_0px_var(--color-neo-accent)]`}
+                                >
+                                    {status === 'error' ? <><RefreshCw className="inline w-4 h-4 mr-1" /> 重试</> : <><Zap className="inline w-4 h-4 mr-1" /> 开始生成</>}
+                                </button>
+                            )}
+                        </div>
                     ) : (
                          <div className="flex gap-3">
                             <button 
@@ -872,6 +919,7 @@ function FormContent() {
   // AI States
   const [rawText, setRawText] = useState('');
   const [isAiOpen, setIsAiOpen] = useState(false);
+  const [aiStatus, setAiStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
@@ -1160,10 +1208,31 @@ function FormContent() {
         
         {config?.ai_config?.enabled && (
              <button
-                onClick={() => setIsAiOpen(true)}
-                className="neo-animate-pop-in neo-animate-pulse-ring group px-3 py-2 border-4 border-neo-border bg-neo-accent font-black text-sm uppercase text-neo-fg shadow-[3px_3px_0px_0px_var(--color-neo-shadow)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all duration-150 hover:brightness-110 hover:-translate-y-0.5 hover:shadow-[5px_5px_0px_0px_var(--color-neo-shadow)]"
+                onClick={() => {
+                  setIsAiOpen(true);
+                }}
+                className={`neo-animate-pop-in neo-animate-pulse-ring group px-3 py-2 border-4 border-neo-border
+                  bg-neo-accent font-black text-sm uppercase text-neo-fg shadow-[3px_3px_0px_0px_var(--color-neo-shadow)]
+                  active:translate-x-[2px] active:translate-y-[2px] active:shadow-none
+                  transition-all duration-150 hover:brightness-110 hover:-translate-y-0.5
+                  hover:shadow-[5px_5px_0px_0px_var(--color-neo-shadow)]
+                  relative`}
              >
-                <Sparkles className="inline-block group-hover:animate-pulse" size={16} /> AI Auto-fill
+                <span className="relative z-10 flex items-center gap-1">
+                  {aiStatus === 'running' ? (
+                    <Loader2 className="inline-block animate-spin" size={16} />
+                  ) : (
+                    <Sparkles className="inline-block group-hover:animate-pulse" size={16} />
+                  )} AI Auto-fill
+                </span>
+                
+                {/* 像素方块扫光效果 */}
+                {aiStatus === 'running' && (
+                  <div className="absolute inset-0 z-0">
+                    <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/30 to-transparent animate-scan [animation-duration:1.5s] [animation-timing-function:ease-in-out] [animation-iteration-count:infinite]" />
+                    <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.1)_50%,transparent_75%,transparent_100%)] bg-size-[4px_4px]" />
+                  </div>
+                )}
              </button>
         )}
       </div>
@@ -1254,11 +1323,17 @@ function FormContent() {
       {config && (
         <AiFillModal
             isOpen={isAiOpen}
-            onClose={() => setIsAiOpen(false)}
+            onClose={() => {
+              setIsAiOpen(false);
+              setAiStatus('idle');
+            }}
             onApply={handleAiApply}
             config={config}
             rawText={rawText}
             chatId={chatId || ''}
+            onStatusChange={(value) => {
+              setAiStatus(value);
+            }}
         />
       )}
     </div>

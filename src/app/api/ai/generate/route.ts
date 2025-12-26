@@ -3,10 +3,9 @@ import { NextRequest } from 'next/server';
 import { ChatConfig } from '@/lib/types';
 import { mockSseData, MOCK_SSE_DELAY } from '@/lib/mock-sse-data';
 
-export const runtime = 'edge';
-// Edge Runtime 最大执行时间限制（Vercel Pro: 60s, Enterprise: 更长）
-// 对于长时间运行的请求，需要添加心跳机制保持连接
-export const maxDuration = 300; // 5 分钟（如果平台支持）
+export const runtime = 'nodejs';
+// Node.js Runtime 支持300秒超时（Vercel Serverless Function）
+export const maxDuration = 300; // 5 分钟
 
 // 通过环境变量或请求参数启用 mock 模式
 const MOCK_SSE_ENABLED = process.env.MOCK_SSE === 'true';
@@ -59,6 +58,7 @@ export async function POST(req: NextRequest) {
             'Authorization': `Bearer ${aiConfig.dify_api_key}`,
             'Content-Type': 'application/json'
         },
+        signal: req.signal, // 添加AbortSignal支持
         body: JSON.stringify({
             inputs,
             query: query || 'auto-fill',
@@ -68,6 +68,14 @@ export async function POST(req: NextRequest) {
     });
 
     if (!response.ok) {
+        // 检查是否是中断错误
+        if (req.signal.aborted) {
+            return new Response(JSON.stringify({ error: 'Request aborted by user' }), { 
+                status: 499, // Client Closed Request
+                headers: { 'Content-Type': 'application/json' } 
+            });
+        }
+        
         const err = await response.text();
         console.error('Dify Error:', err);
         return new Response(JSON.stringify({ error: 'Dify API Error: ' + err }), { 
@@ -86,6 +94,12 @@ export async function POST(req: NextRequest) {
     
     const transformStream = new TransformStream({
         async transform(chunk, controller) {
+            // 检查请求是否已被中断
+            if (req.signal.aborted) {
+                controller.terminate();
+                return;
+            }
+            
             buffer += decoder.decode(chunk, { stream: true });
             const lines = buffer.split('\n');
             buffer = lines.pop() || ''; // 保留不完整的最后一行
@@ -102,6 +116,16 @@ export async function POST(req: NextRequest) {
                 try {
                     const data = JSON.parse(line.slice(6));
                     const event = data.event;
+
+                    // --- 提取task_id用于停止功能 ---
+                    // Dify的task_id可能在message_start、workflow_started事件中，字段名可能是task_id、id或conversation_id
+                    if (event === 'message_start' || event === 'workflow_started' || event === 'message') {
+                        const taskId = data.task_id || data.id || data.conversation_id || data.message_id;
+                        if (taskId) {
+                            // 将task_id发送给前端
+                            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'task_id', task_id: taskId })}\n\n`));
+                        }
+                    }
 
                     // --- 新增：Chatflow 节点步骤解析 ---
                     if (event === 'node_started') {
