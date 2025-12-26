@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "precommit": "node scripts/pre-commit.js",
+    "prepare": "husky install"
   },
   "dependencies": {
     "@vercel/kv": "^3.0.0",
@@ -30,6 +32,7 @@
     "eslint-config-next": "16.1.0",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vitest": "^4.0.16"
+    "vitest": "^4.0.16",
+    "husky": "^9.1.7"
   }
 }
