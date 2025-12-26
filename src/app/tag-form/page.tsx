@@ -1228,12 +1228,14 @@ function FormContent() {
                 
                 {/* 像素方块扫光效果 */}
                 {aiStatus === 'running' && (
-                  <div className="absolute inset-0 z-0">
-                    <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/30 to-transparent animate-scan [animation-duration:1.5s] [animation-timing-function:ease-in-out] [animation-iteration-count:infinite]" />
-                    <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.1)_50%,transparent_75%,transparent_100%)] bg-size-[4px_4px]" />
+                  <div className="absolute inset-0 w-full h-full left-0 top-0 overflow-hidden">
+                      <div className="absolute inset-0 z-0">
+                        <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/30 to-transparent animate-scan [animation-duration:1.5s] [animation-timing-function:ease-in-out] [animation-iteration-count:infinite]" />
+                        <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.1)_50%,transparent_75%,transparent_100%)] bg-size-[4px_4px]" />
+                      </div>
                   </div>
                 )}
-             </button>
+              </button>
         )}
       </div>
 
