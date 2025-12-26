@@ -544,9 +544,11 @@ function OptionTag({
 
 // 添加新标签输入组件
 function AddNewTagInput({ 
-  onAdd 
+  onAdd,
+  onSelect
 }: { 
   onAdd: (value: string) => void;
+  onSelect?: (value: string) => void;
 }) {
   const [inputValue, setInputValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -554,7 +556,11 @@ function AddNewTagInput({
   const handleAdd = () => {
     const normalized = normalizeTagValue(inputValue);
     if (normalized) {
-      onAdd(normalized);
+      if (onSelect) {
+        onSelect(normalized);
+      } else {
+        onAdd(normalized);
+      }
       setInputValue('');
     }
   };
@@ -735,7 +741,19 @@ function FieldEditor({
           ))}
         </div>
         {field.allow_new && (
-          <AddNewTagInput onAdd={onAddCustom} />
+          <AddNewTagInput 
+            onAdd={onAddCustom}
+            onSelect={(value) => {
+              if (allOptions.includes(value)) {
+                // 如果选项已存在，直接选中
+                onChange(value);
+              } else {
+                // 如果选项不存在，则添加并选中
+                onAddCustom(value);
+                onChange(value);
+              }
+            }}
+          />
         )}
         <EditCustomOptionModal
           isOpen={editingOption !== null}
@@ -796,7 +814,19 @@ function FieldEditor({
           </div>
         )}
         {field.allow_new && (
-          <AddNewTagInput onAdd={onAddCustom} />
+          <AddNewTagInput 
+            onAdd={onAddCustom}
+            onSelect={(value) => {
+              if (allOptions.includes(value)) {
+                // 如果选项已存在，直接切换选中状态
+                toggleOption(value);
+              } else {
+                // 如果选项不存在，则添加并选中
+                onAddCustom(value);
+                onChange([...selectedValues, value]);
+              }
+            }}
+          />
         )}
         <EditCustomOptionModal
           isOpen={editingOption !== null}
