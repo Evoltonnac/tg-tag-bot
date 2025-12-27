@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
                     // --- 新增：Chatflow 节点步骤解析 ---
                     if (event === 'node_started') {
                         const nodeData = data.data;
-                        const targetTypes = ['code', 'tool', 'llm']; // 只关注这三种类型
+                        const targetTypes = ['code', 'tool', 'llm', 'http-request']; // 支持这四种类型
 
                         if (nodeData && targetTypes.includes(nodeData.node_type)) {
                             // 提取步骤信息

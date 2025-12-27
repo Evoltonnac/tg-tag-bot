@@ -14,7 +14,8 @@ import {
   Code,
   Wrench,
   Brain,
-  Loader2
+  Loader2,
+  Globe
 } from 'lucide-react';
 
 declare global {
@@ -119,6 +120,8 @@ function AiFillModal({
                 return <Wrench size={iconSize} />;
             case 'llm':
                 return <Brain size={iconSize} />;
+            case 'http-request':
+                return <Globe size={iconSize} />;
             default:
                 return <Loader2 size={iconSize} className="animate-spin" />;
         }
